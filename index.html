@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0B0B25" />
+<meta name="description" content="Momentum — Focus. Plan. Achieve. A daily task tracker with liquid-glass design." />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-180.png" />
+<link rel="icon" href="assets/favicon.ico" />
+<link rel="manifest" href="assets/manifest.webmanifest" />
+<title>Momentum — Focus. Plan. Achieve.</title>
+<link rel="stylesheet" href="css/style.css" />
+
+<!-- Export libraries (loaded from CDN, no build step required) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+</head>
+<body>
+
+<div class="momentum-bg" aria-hidden="true">
+  <div class="blob blob-orange"></div>
+  <div class="blob blob-purple"></div>
+  <div class="blob blob-cyan"></div>
+  <div class="blob blob-teal"></div>
+  <div class="blob blob-green"></div>
+  <div class="blob blob-navy"></div>
+  <div class="grain"></div>
+</div>
+
+<div class="wrap">
+
+  <header class="app-header">
+    <div class="brand">
+      <img src="assets/logo-icon-light.png" alt="Momentum logo" class="logo logo-light" />
+      <img src="assets/logo-icon-dark.png" alt="Momentum logo" class="logo logo-dark" />
+      <div>
+        <h1>Momentum</h1>
+        <p class="tagline">Focus. Plan. Achieve.</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="export-wrap">
+        <button id="exportBtn" class="glass-btn pill" aria-haspopup="true" aria-expanded="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3m0 12-4-4m4 4 4-4M3 17v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/></svg>
+          <span class="hide-mobile">Export / Sync</span>
+        </button>
+        <div id="exportMenu" class="glass-strong export-menu" hidden>
+          <p class="menu-label">Reports</p>
+          <button class="menu-item" data-action="export-xlsx">Export as Excel (.xlsx)</button>
+          <button class="menu-item" data-action="export-docx">Export as Word (.doc)</button>
+          <button class="menu-item" data-action="export-pdf">Export as PDF</button>
+          <p class="menu-label">Sync across devices</p>
+          <button class="menu-item" data-action="backup">Download backup (.json)</button>
+          <button class="menu-item" data-action="restore">Restore from backup…</button>
+          <input type="file" id="restoreInput" accept="application/json" hidden />
+          <p class="menu-note">Tasks live in this browser only. Download a backup here, then restore it on your other device to bring everything across.</p>
+        </div>
+      </div>
+      <button id="themeToggle" class="glass-btn round" aria-label="Toggle dark mode"></button>
+    </div>
+  </header>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <section class="glass-strong stats-card">
+    <div class="ring-wrap">
+      <svg id="ringSvg" width="96" height="96" viewBox="0 0 96 96" class="ring-svg">
+        <defs>
+          <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#5B2A9E" />
+            <stop offset="55%" stop-color="#22C6EE" />
+            <stop offset="100%" stop-color="#7DD263" />
+          </linearGradient>
+        </defs>
+        <circle cx="48" cy="48" r="43.5" fill="none" stroke="currentColor" class="ring-track" stroke-width="9"/>
+        <circle id="ringProgress" cx="48" cy="48" r="43.5" fill="none" stroke="url(#ringGradient)" stroke-width="9" stroke-linecap="round" transform="rotate(-90 48 48)"/>
+        <circle cx="48" cy="48" r="6.3" fill="url(#ringGradient)" />
+      </svg>
+      <div class="ring-center">
+        <span id="ringLabel">0%</span>
+        <small>today</small>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div>
+        <p id="statsDone" class="stat-number">0/0</p>
+        <p class="stat-label">Tasks done today</p>
+      </div>
+      <div>
+        <p class="stat-number flame"><span id="statsStreak">0</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c1 4-3 5-3 9a3 3 0 0 0 6 0c0-1-.5-2-1-2.5 1.5 0 3 1.5 3 4.5a5 5 0 0 1-10 0C7 8 12 6 12 2Z"/></svg>
+        </p>
+        <p class="stat-label">Day streak</p>
+      </div>
+    </div>
+  </section>
+
+  <nav id="filterTabs" class="glass filter-tabs">
+    <button class="tab active" data-filter="today">Today</button>
+    <button class="tab" data-filter="upcoming">Upcoming</button>
+    <button class="tab" data-filter="all">All</button>
+    <button class="tab" data-filter="completed">Completed</button>
+  </nav>
+
+  <main id="taskList" class="task-list"></main>
+
+  <footer class="app-footer">Momentum v<span id="versionLabel"></span></footer>
+</div>
+
+<button id="addTaskBtn" class="fab" aria-label="Add task">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<!-- Add task modal -->
+<div id="addTaskModal" class="modal-overlay" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <form id="addTaskForm" class="glass-strong modal">
+    <div class="modal-head">
+      <h2>New task</h2>
+      <button type="button" class="glass-btn round small" data-close-modal aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <label class="field">
+      <span class="field-label">Title</span>
+      <input id="taskTitle" type="text" placeholder="What do you need to do?" required />
+    </label>
+
+    <label class="field">
+      <span class="field-label">Notes (optional)</span>
+      <textarea id="taskNotes" rows="2"></textarea>
+    </label>
+
+    <div class="field-row">
+      <label class="field">
+        <span class="field-label">Date</span>
+        <input id="taskDate" type="date" />
+      </label>
+      <label class="field">
+        <span class="field-label">Priority</span>
+        <div class="dd" id="priorityDD" data-value="medium">
+          <button type="button" class="dd-trigger">
+            <span class="dd-trigger-label">Medium</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="dd-list glass-strong" hidden>
+            <button type="button" class="dd-option" data-value="low">Low</button>
+            <button type="button" class="dd-option" data-value="medium">Medium</button>
+            <button type="button" class="dd-option" data-value="high">High</button>
+          </div>
+        </div>
+      </label>
+    </div>
+
+    <label class="field">
+      <span class="field-label">Category</span>
+      <div class="dd" id="categoryDD" data-value="">
+        <button type="button" class="dd-trigger">
+          <span class="dd-trigger-label">Select…</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="dd-list glass-strong" id="categoryDDList" hidden></div>
+      </div>
+      <input id="taskCategoryNew" type="text" placeholder="Category name" hidden />
+    </label>
+
+    <label class="checkbox-row">
+      <input id="taskRepeat" type="checkbox" class="momentum-check" />
+      <span>Repeat every day until done</span>
+    </label>
+
+    <div class="field">
+      <span class="field-label">Subtasks</span>
+      <div id="subtaskFields" class="subtask-fields"></div>
+      <button type="button" id="addSubtaskField" class="link-btn">+ Add subtask</button>
+    </div>
+
+    <button type="submit" class="primary-btn">Add task</button>
+  </form>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
