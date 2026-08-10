@@ -283,6 +283,17 @@ html.dark .momentum-check{ border-color: rgba(255,255,255,.45); }
 .empty-icon{ width:56px; height:56px; margin:0 auto 16px; border-radius:999px; background:linear-gradient(135deg,#FF8A3D,#FF3FA8,#22C6EE); display:flex; align-items:center; justify-content:center; }
 .empty-state p{ font-size:14px; color:var(--text-soft); margin:0; }
 
+.promo-card{
+  display:flex; align-items:center; gap:12px; padding:14px 16px; margin-top:24px;
+  text-decoration:none; color:inherit; transition: transform .2s cubic-bezier(.34,1.56,.64,1);
+}
+.promo-card:active{ transform: scale(.98); }
+.promo-icon{ font-size:22px; flex-shrink:0; }
+.promo-text{ flex:1; font-size:13px; color:var(--text-soft); line-height:1.5; }
+.promo-text strong{ display:block; color:var(--text); font-size:13.5px; margin-bottom:1px; }
+.promo-link{ font-weight:700; background:linear-gradient(90deg,#FF3FA8,#22C6EE); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.promo-arrow{ flex-shrink:0; opacity:.5; }
+
 .app-footer{ text-align:center; margin-top:40px; font-size:11px; color:var(--text-faint); line-height:1.7; }
 .app-footer a{ color: var(--text-soft); font-weight:600; text-decoration:none; border-bottom:1px solid currentColor; }
 .app-footer a:hover{ color:#22C6EE; }

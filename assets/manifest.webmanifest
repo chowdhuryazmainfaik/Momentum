@@ -3,10 +3,10 @@
   "short_name": "Momentum",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#0B0B25",
-  "theme_color": "#0B0B25",
+  "background_color": "#0a0b12",
+  "theme_color": "#FF3FA8",
   "icons": [
-    { "src": "assets/favicon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "assets/favicon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "favicon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "favicon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }

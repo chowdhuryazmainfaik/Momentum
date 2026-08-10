@@ -1,6 +1,6 @@
 # Momentum — Focus. Plan. Achieve.
 
-**Version 3.3.0** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
+**Version 3.4.0** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
 
 ## Run it
 
@@ -32,15 +32,19 @@ CHANGELOG.md       Version history
 - Add tasks with notes, category, priority, due date, subtasks, and an optional daily-repeat toggle
 - Today / Upcoming / All / Completed views, a completion ring, and a day-streak counter
 - Dark/light mode (remembers your choice), with a logo that swaps to match
-- Export tasks + subtasks to **Excel (.xlsx)**, **Word (.doc)**, or **PDF** (uses free CDN libraries — no install needed, just an internet connection when you export)
+- Export tasks + subtasks to **Excel (.xlsx)**, **Word (.doc)**, or **PDF** (uses free CDN libraries — no install needed, just an internet connection when you export). Word and PDF exports include the Momentum logo; the Excel export gets a bold brand header line instead, since the free spreadsheet library used here can't embed real images into .xlsx files.
 - **Backup / Restore** as JSON or Excel, to carry your tasks between devices — download a backup on one device, restore it on the other. (Excel restore doesn't preserve task notes — use JSON for full-fidelity backups.)
 - **Momentum Coach** — a panel with a few observations about your current tasks (overdue items, streaks, stale high-priority tasks, etc.), computed entirely from your local data. No account, no external API calls.
 - **What's New** — see what changed in the current version any time; it also opens automatically once after an update.
+- **Install as an app** — from the Export/Sync menu, install Momentum to your device like a native app (Chrome/Edge/Android support one-tap install; iOS Safari needs the manual "Add to Home Screen" step, which the app will tell you).
+- **Priority task reminders** — opt in from the same menu for a browser notification about open high-priority tasks. This checks on load and hourly while the tab is open; it's a local notification only (no backend), so nothing arrives while the app is fully closed.
+- A small promo card links to [Daybook](https://daybook-az.vercel.app/) for expense & income tracking.
 - All data is stored in the browser (`localStorage`) — no account, no server
 
 ## Notes
 
 - Export relies on three small libraries loaded from a CDN (`cdnjs.cloudflare.com`) — that's the only time the app needs internet access; everything else works fully offline once loaded.
-- To change branding, replace `assets/logo-icon-light.png` (light mode) and `assets/logo-icon-dark.png` (dark mode). The background is a soft animated ambient gradient defined entirely in CSS (see the `.ambient` rules in `css/style.css`) — no image files involved, so you can retint it there directly.
+- The install prompt and logo fetch for exports both require the site to be served over `http(s)` (e.g. via Vercel, GitHub Pages, or a local dev server) — opening `index.html` directly from disk (`file://`) still works for everyday use, but the browser blocks service worker registration and same-origin `fetch()` under `file://`, so the install option and the exported logo will silently be unavailable in that mode.
+- To change branding, replace `assets/logo-icon-light.png` (light mode) and `assets/logo-icon-dark.png` (dark mode). The background is defined entirely in CSS (see the `.blob` rules in `css/style.css`) — no image files involved, so you can retint it there directly.
 - Deleting a daily-repeating task removes the whole recurring series (not just that day's copy) — the app asks you to confirm before doing this.
-- Bump `APP_VERSION` near the top of `js/app.js` when you ship changes, and add an entry to the `CHANGELOG` array in the same file (shown in the "What's New" panel) and to `CHANGELOG.md`.
+- Bump `APP_VERSION` near the top of `js/app.js` when you ship changes, and add an entry to the `CHANGELOG` array in the same file (shown in the "What's New" panel) and to `CHANGELOG.md`. If you change core files, also bump `CACHE_NAME` in `sw.js` so returning visitors get the update instead of a stale cached copy.

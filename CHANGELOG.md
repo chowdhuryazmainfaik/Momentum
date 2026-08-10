@@ -2,6 +2,14 @@
 
 All notable changes to Momentum are documented here.
 
+## v3.4.0
+
+- Added a promo card above the footer for Daybook (expense & income tracking) — https://daybook-az.vercel.app/
+- Install Momentum as an app from the browser (Export/Sync menu → App section); added a real service worker so the install prompt meets browser criteria and the app shell loads offline
+- Priority task reminders: opt in for a browser notification about open high-priority tasks (checked on load and hourly while the tab is open). Local notifications only — no backend, so nothing arrives while the app is fully closed
+- Momentum logo now embedded in Word and PDF exports; Excel gets a bold brand header line instead, since the free spreadsheet library can't embed images into .xlsx
+- Fixed the PWA manifest's icon paths (same relative-path mistake as the earlier CSS bug — resolved against the manifest's own folder instead of the site root) and updated manifest/theme-color to current branding
+
 ## v3.3.0
 
 - True transparent "water glass" finish on every card, button, dropdown, and modal — much lower panel opacity with stronger blur, so the background genuinely shows through

@@ -2,7 +2,8 @@
   'use strict';
 
   var APP_NAME = 'Momentum';
-  var APP_VERSION = '3.3.0';
+  var APP_TAGLINE = 'Focus. Plan. Achieve.';
+  var APP_VERSION = '3.4.0';
 
   var TASKS_KEY = 'momentum.tasks.v1';
   var CATEGORIES_KEY = 'momentum.categories.v1';
@@ -11,6 +12,17 @@
   var DEFAULT_CATEGORIES = ['Personal', 'Work', 'Health', 'Learning'];
 
   var CHANGELOG = [
+    {
+      version: '3.4.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'Added a small promo card above the footer for Daybook (expense & income tracking) \u2014 https://daybook-az.vercel.app/.' },
+        { type: 'feat', text: 'Install Momentum as an app from the browser (Export/Sync menu \u2192 App section). Added a real service worker so the install prompt meets browser criteria and the app shell loads offline.' },
+        { type: 'feat', text: 'Priority task reminders: opt in from the same menu to get a browser notification for open high-priority tasks, checked on load and hourly while the tab stays open. (Local notifications only \u2014 this is a backend-free static site, so nothing is delivered while the app is fully closed; a real push notification would need a server.)' },
+        { type: 'feat', text: 'The Momentum logo is now embedded in Word and PDF exports. Excel exports get a bold brand header line instead \u2014 the free spreadsheet library this app uses can\u2019t embed actual images into .xlsx files.' },
+        { type: 'fix', text: 'Fixed a second copy of the earlier relative-path bug: the PWA manifest\u2019s icon paths were resolving relative to the manifest\u2019s own folder instead of the site root, so app icons would have silently failed to load. Also updated the manifest and browser theme-color to the current pink/blue branding (they were still the very first version\u2019s colors).' }
+      ]
+    },
     {
       version: '3.3.0',
       date: 'August 2026',
@@ -670,6 +682,24 @@
     return 'momentum-tasks-' + todayStr() + '-v' + APP_VERSION;
   }
 
+  // Fetches the logo once and caches it as a data URL, for embedding into exported files.
+  var _logoDataUrlPromise = null;
+  function getLogoDataUrl() {
+    if (_logoDataUrlPromise) return _logoDataUrlPromise;
+    _logoDataUrlPromise = fetch('assets/logo-icon-light.png')
+      .then(function (res) { return res.blob(); })
+      .then(function (blob) {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function () { resolve(reader.result); };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      })
+      .catch(function () { return null; }); // exports still work without the logo if this fails
+    return _logoDataUrlPromise;
+  }
+
   function flattenRows() {
     var rows = [];
     tasks.forEach(function (t) {
@@ -689,8 +719,15 @@
     var rows = flattenRows().map(function (r) {
       return { Date: r.Date, Task: r.Task, Category: r.Category, Priority: r.Priority, Status: r.Status, Repeats: r.Repeats, Subtask: r.Subtask, 'Subtask Status': r.SubStatus };
     });
-    var ws = XLSX.utils.json_to_sheet(rows);
+    // The free/CDN build of SheetJS can't embed an actual logo image into a sheet, so a bold
+    // brand header row stands in for it — full-fidelity logo images do embed in the Word/PDF
+    // exports below.
+    var brandRow = [[APP_NAME + ' \u2014 ' + APP_TAGLINE], []];
+    var ws = XLSX.utils.aoa_to_sheet(brandRow);
+    XLSX.utils.sheet_add_json(ws, rows, { origin: 'A3' });
     ws['!cols'] = [{ wch: 12 }, { wch: 30 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 30 }, { wch: 14 }];
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }];
+    if (ws['A1']) ws['A1'].s = { font: { bold: true, sz: 14 } };
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Tasks');
     XLSX.writeFile(wb, filenameBase() + '.xlsx');
@@ -705,39 +742,53 @@
         + '<td>' + r.Priority + '</td><td>' + status + '</td><td>' + r.Repeats + '</td></tr>';
     }).join('');
 
-    var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
-      + '<head><meta charset="utf-8"><title>' + APP_NAME + ' Report</title></head><body>'
-      + '<h1 style="font-family:Calibri,Arial,sans-serif;">' + APP_NAME + ' — Task Report</h1>'
-      + '<p style="font-family:Calibri,Arial,sans-serif;color:#666;font-size:11px;">Generated ' + new Date().toLocaleString() + ' · ' + APP_NAME + ' v' + APP_VERSION + '</p>'
-      + '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:12px;width:100%;">'
-      + '<tr style="background:#FF3FA8;color:#fff;"><th>Date</th><th>Task / Subtask</th><th>Category</th><th>Priority</th><th>Status</th><th>Repeats</th></tr>'
-      + body + '</table></body></html>';
+    getLogoDataUrl().then(function (logoUrl) {
+      var logoHtml = logoUrl ? '<img src="' + logoUrl + '" style="height:36px;vertical-align:middle;margin-right:10px;" />' : '';
+      var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
+        + '<head><meta charset="utf-8"><title>' + APP_NAME + ' Report</title></head><body>'
+        + '<div style="margin-bottom:6px;">' + logoHtml
+        + '<span style="font-family:Calibri,Arial,sans-serif;font-size:22px;font-weight:bold;vertical-align:middle;">' + APP_NAME + ' — Task Report</span></div>'
+        + '<p style="font-family:Calibri,Arial,sans-serif;color:#666;font-size:11px;">Generated ' + new Date().toLocaleString() + ' · ' + APP_NAME + ' v' + APP_VERSION + '</p>'
+        + '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:12px;width:100%;">'
+        + '<tr style="background:#FF3FA8;color:#fff;"><th>Date</th><th>Task / Subtask</th><th>Category</th><th>Priority</th><th>Status</th><th>Repeats</th></tr>'
+        + body + '</table></body></html>';
 
-    var blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-    downloadBlob(blob, filenameBase() + '.doc');
+      var blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+      downloadBlob(blob, filenameBase() + '.doc');
+    });
   }
 
   function exportPdf() {
     if (typeof window.jspdf === 'undefined') { showToast('PDF export library failed to load. Check your connection.'); return; }
-    var doc = new window.jspdf.jsPDF();
-    doc.setFontSize(18);
-    doc.text(APP_NAME + ' — Task Report', 14, 18);
-    doc.setFontSize(10);
-    doc.setTextColor(120);
-    doc.text('Generated ' + new Date().toLocaleString() + ' · ' + APP_NAME + ' v' + APP_VERSION, 14, 25);
 
-    var rows = flattenRows().map(function (r) {
-      return [r.Date, r.Subtask ? ('  • ' + r.Subtask) : r.Task, r.Category, r.Priority, r.Subtask ? r.SubStatus : r.Status, r.Repeats];
-    });
+    getLogoDataUrl().then(function (logoUrl) {
+      var doc = new window.jspdf.jsPDF();
+      var titleX = 14;
+      if (logoUrl) {
+        try {
+          doc.addImage(logoUrl, 'PNG', 14, 10, 14, 14);
+          titleX = 32;
+        } catch (e) { /* fall back to no logo if the image can't be embedded */ }
+      }
+      doc.setFontSize(18);
+      doc.text(APP_NAME + ' — Task Report', titleX, 19);
+      doc.setFontSize(10);
+      doc.setTextColor(120);
+      doc.text('Generated ' + new Date().toLocaleString() + ' · ' + APP_NAME + ' v' + APP_VERSION, 14, 30);
 
-    doc.autoTable({
-      startY: 32,
-      head: [['Date', 'Task / Subtask', 'Category', 'Priority', 'Status', 'Repeats']],
-      body: rows,
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [255, 63, 168] }
+      var rows = flattenRows().map(function (r) {
+        return [r.Date, r.Subtask ? ('  • ' + r.Subtask) : r.Task, r.Category, r.Priority, r.Subtask ? r.SubStatus : r.Status, r.Repeats];
+      });
+
+      doc.autoTable({
+        startY: 36,
+        head: [['Date', 'Task / Subtask', 'Category', 'Priority', 'Status', 'Repeats']],
+        body: rows,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [255, 63, 168] }
+      });
+      doc.save(filenameBase() + '.pdf');
     });
-    doc.save(filenameBase() + '.pdf');
   }
 
   function downloadBlob(blob, name) {
@@ -868,6 +919,8 @@
     else if (action === 'backup') backupJson();
     else if (action === 'restore-json') restoreJson();
     else if (action === 'restore-xlsx') restoreXlsx();
+    else if (action === 'install') triggerInstall();
+    else if (action === 'notify') toggleNotifications();
   });
 
   // ---------- Momentum Coach (local, rule-based — no external calls) ----------
@@ -1005,6 +1058,121 @@
     }, 8000);
   }
 
+  // ---------- PWA install ----------
+  var deferredInstallPrompt = null;
+  var installMenuItem = document.getElementById('installMenuItem');
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    installMenuItem.hidden = false;
+  });
+
+  function triggerInstall() {
+    if (!deferredInstallPrompt) {
+      // Most likely iOS Safari, or a browser without install-prompt support — there's no
+      // programmatic install API there, so point the person at the manual steps instead.
+      var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      showToast(isIOS
+        ? 'On iPhone/iPad: tap the Share icon, then "Add to Home Screen".'
+        : 'Your browser doesn\u2019t support one-tap install here — look for "Add to Home Screen" or "Install app" in its menu.');
+      return;
+    }
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.finally(function () {
+      deferredInstallPrompt = null;
+      installMenuItem.hidden = true;
+    });
+  }
+
+  window.addEventListener('appinstalled', function () {
+    installMenuItem.hidden = true;
+    showToast('Momentum installed \u2014 you can now open it like any other app.');
+  });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {
+        // Fails silently when opened straight from disk (file://) or offline on first load —
+        // the app still works normally without the service worker, just without offline caching.
+      });
+    });
+  }
+
+  // ---------- priority task notifications (local only — while this tab is open) ----------
+  var NOTIFIED_KEY = 'momentum.notifiedTaskIds.v1';
+  var notifyMenuItem = document.getElementById('notifyMenuItem');
+
+  function refreshNotifyLabel() {
+    if (!('Notification' in window)) {
+      notifyMenuItem.textContent = '🔕 Notifications not supported in this browser';
+      notifyMenuItem.disabled = true;
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      notifyMenuItem.textContent = '✅ Priority task reminders on';
+    } else if (Notification.permission === 'denied') {
+      notifyMenuItem.textContent = '🔕 Notifications blocked \u2014 enable them in browser settings';
+    } else {
+      notifyMenuItem.textContent = '🔔 Enable priority task reminders';
+    }
+  }
+
+  function toggleNotifications() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      showToast('Priority task reminders are already on.');
+      checkPriorityNotifications(true);
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      showToast('Notifications are blocked for this site \u2014 enable them from your browser\u2019s site settings.');
+      return;
+    }
+    Notification.requestPermission().then(function (perm) {
+      refreshNotifyLabel();
+      if (perm === 'granted') {
+        showToast('Reminders on \u2014 you\u2019ll be notified about open high-priority tasks.');
+        checkPriorityNotifications(true);
+        startNotificationTimer();
+      }
+    });
+  }
+
+  function checkPriorityNotifications(forceShow) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    var today = todayStr();
+    var pending = tasks.filter(function (t) { return !t.done && t.priority === 'high' && t.date <= today; });
+    if (pending.length === 0) return;
+
+    var notified = loadJSON(NOTIFIED_KEY, {});
+    var todayKey = today;
+    var alreadyNotifiedToday = notified[todayKey] || [];
+    var fresh = pending.filter(function (t) { return alreadyNotifiedToday.indexOf(t.id) === -1; });
+
+    if (fresh.length === 0 && !forceShow) return;
+    var toAnnounce = forceShow ? pending : fresh;
+
+    var title = toAnnounce.length === 1 ? '1 high-priority task needs attention' : toAnnounce.length + ' high-priority tasks need attention';
+    var body = toAnnounce.slice(0, 3).map(function (t) { return '\u2022 ' + t.title; }).join('\n') + (toAnnounce.length > 3 ? '\n\u2026and more' : '');
+
+    try {
+      new Notification(title, { body: body, icon: 'assets/favicon-192.png', tag: 'momentum-priority' });
+    } catch (e) { /* some browsers restrict Notification() outside a service worker — fail quietly */ }
+
+    notified[todayKey] = alreadyNotifiedToday.concat(fresh.map(function (t) { return t.id; }));
+    // Only keep today's entry so this storage key doesn't grow forever.
+    var pruned = {};
+    pruned[todayKey] = notified[todayKey];
+    saveJSON(NOTIFIED_KEY, pruned);
+  }
+
+  var _notifyTimer = null;
+  function startNotificationTimer() {
+    if (_notifyTimer) return;
+    _notifyTimer = setInterval(function () { checkPriorityNotifications(false); }, 60 * 60 * 1000); // hourly, while the tab stays open
+  }
+
   // ---------- init ----------
   document.getElementById('versionLabel').textContent = APP_VERSION;
   document.getElementById('yearLabel').textContent = new Date().getFullYear();
@@ -1012,6 +1180,11 @@
   startQuoteRotator();
   carryOverRecurringTasks();
   renderAll();
+  refreshNotifyLabel();
+  if ('Notification' in window && Notification.permission === 'granted') {
+    checkPriorityNotifications(false);
+    startNotificationTimer();
+  }
 
   // Auto-open "What's new" once per version, on the first load after an update.
   var lastSeen = loadJSON(LAST_SEEN_VERSION_KEY, null);

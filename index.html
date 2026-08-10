@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-<meta name="theme-color" content="#ffc98f" />
+<meta name="theme-color" content="#FF3FA8" />
 <meta name="description" content="Momentum — Focus. Plan. Achieve. A daily task tracker with liquid-glass design." />
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
 <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png" />
@@ -56,6 +56,9 @@
           <input type="file" id="restoreJsonInput" accept="application/json" hidden />
           <input type="file" id="restoreXlsxInput" accept=".xlsx,.xls" hidden />
           <p class="menu-note">Tasks live in this browser only. Download a backup here, then restore it on your other device to bring everything across. (Excel restore skips notes — use JSON for a full-fidelity backup.)</p>
+          <p class="menu-label">App</p>
+          <button id="installMenuItem" class="menu-item" data-action="install" hidden>📲 Install Momentum app</button>
+          <button id="notifyMenuItem" class="menu-item" data-action="notify">🔔 Enable priority task reminders</button>
         </div>
       </div>
       <button id="whatsNewBtn" class="glass-btn round" aria-label="What's new">
@@ -116,6 +119,15 @@
   </nav>
 
   <main id="taskList" class="task-list"></main>
+
+  <a href="https://daybook-az.vercel.app/" target="_blank" rel="noopener noreferrer" class="promo-card glass">
+    <span class="promo-icon">💰</span>
+    <span class="promo-text">
+      <strong>Also tracking your money?</strong>
+      For expenses &amp; income, here's our loved app — <span class="promo-link">Daybook</span>
+    </span>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="promo-arrow"><path d="M7 17 17 7M7 7h10v10"/></svg>
+  </a>
 
   <footer class="app-footer">
     <p>Momentum v<span id="versionLabel"></span> · © <span id="yearLabel"></span> All rights reserved.</p>
