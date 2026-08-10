@@ -2,12 +2,119 @@
   'use strict';
 
   var APP_NAME = 'Momentum';
-  var APP_VERSION = '1.0.0';
+  var APP_VERSION = '3.3.0';
 
   var TASKS_KEY = 'momentum.tasks.v1';
   var CATEGORIES_KEY = 'momentum.categories.v1';
   var THEME_KEY = 'momentum.theme.v1';
+  var LAST_SEEN_VERSION_KEY = 'momentum.lastSeenVersion.v1';
   var DEFAULT_CATEGORIES = ['Personal', 'Work', 'Health', 'Learning'];
+
+  var CHANGELOG = [
+    {
+      version: '3.3.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'True transparent "water glass" finish on every card, button, dropdown, and modal — much lower panel opacity with stronger blur, so the background genuinely shows through instead of sitting behind a mostly-opaque white card.' },
+        { type: 'feat', text: 'Background orbs are now sharp/lightly-blurred where they float freely, and only appear soft and diffused where they pass behind a glass panel — the panel\u2019s own blur does that work, rather than blurring the orbs themselves everywhere.' },
+        { type: 'fix', text: 'Removed every remaining trace of purple/violet from the UI (buttons, badges, checkboxes, progress ring, dropdown highlights, exported Word/PDF headers) and replaced it with the pink/blue accent pair matching the new background orbs. Dark mode glass is now a neutral dark tint instead of a violet-tinted one.' }
+      ]
+    },
+    {
+      version: '3.2.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'New background: bright glassmorphism look with three large, softly blurred pink, blue, and green orbs drifting and bouncing slowly around the screen on a white (light mode) or near-black (dark mode) base — matching the requested reference.' },
+        { type: 'feat', text: 'Brightened the glass cards to a crisper, whiter frosted look to match the reference card style, with a neutral shadow tint instead of the previous green/violet tint.' },
+        { type: 'fix', text: 'Reverted header title and footer text to theme-adaptive colors, since the background is light again in light mode (they had been hardcoded light for the previous all-dark navy background).' }
+      ]
+    },
+    {
+      version: '3.1.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'New background: a navy-to-sky-blue radial gradient with a faint dot grid, matching the requested reference — deep navy core, lighter blue toward the edges, with dark mode pushed richer and darker.' },
+        { type: 'feat', text: 'Added twinkling star animation across the background, subtle in light mode and clearly visible in dark mode.' },
+        { type: 'fix', text: 'Since the new background is dark-toned in both themes, fixed the header title and footer text (which sit directly on the background, not on a glass card) to stay light and readable in both light and dark mode.' }
+      ]
+    },
+    {
+      version: '3.0.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'Major visual overhaul: much stronger liquid-glass treatment across every card, button, dropdown, and modal — heavier blur, lower-opacity tinted panels, a bright top highlight that catches light like a real glass edge, and soft ambient glow shadows.' },
+        { type: 'feat', text: 'Replaced the photo skyline background with a soft animated ambient gradient — misty green/warm glow in light mode, deep black-to-violet aura in dark mode — built entirely in CSS so it stays lightweight and infinitely retintable.' },
+        { type: 'fix', text: 'Removed the now-unused background photo assets.' }
+      ]
+    },
+    {
+      version: '2.3.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'Swapped in your higher-resolution reference photos for the day and night skylines, upscaled and exported at high quality.' },
+        { type: 'feat', text: 'The sun now glows and gently pulses in place over the real sunrise photo; the moon does the same at night.' },
+        { type: 'feat', text: 'Added drifting clouds and small flying birds crossing the sky periodically, layered on top of the photo.' },
+        { type: 'fix', text: 'Strengthened contrast further: dark mode cards are now a tinted dark glass (instead of a light tint) so text stays crisp over the busy, brightly-lit night skyline; light mode cards are slightly more opaque too.' }
+      ]
+    },
+    {
+      version: '2.2.1',
+      date: 'August 2026',
+      items: [
+        { type: 'fix', text: 'Fixed the background images not showing at all — the CSS was pointing to assets/bg-light.jpg relative to the css/ folder itself, instead of the site root, so the files could never be found.' }
+      ]
+    },
+    {
+      version: '2.2.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'Background now uses your exact reference photos — the sunrise skyline for light mode and the night skyline for dark mode — crossfading between the two when you switch themes.' },
+        { type: 'fix', text: 'Replaced the illustrated/procedural skyline with the real reference images for a closer match to the requested look.' }
+      ]
+    },
+    {
+      version: '2.1.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'Full background redesign: an illustrated day/night city skyline (matching the requested reference art) replaces the old abstract gradient — sunrise sky and skyline in light mode, starry night skyline in dark mode.' },
+        { type: 'feat', text: 'Animated glowing sun (light mode) and glowing moon with twinkling stars (dark mode), plus drifting clouds and a shimmering water reflection of the skyline.' },
+        { type: 'feat', text: 'Rotating inspirational quotes shown under the header to nudge you toward finishing today\u2019s tasks.' },
+        { type: 'fix', text: 'Increased glass-card opacity slightly in dark mode so content stays clearly readable over the busier night scene.' }
+      ]
+    },
+    {
+      version: '2.0.0',
+      date: 'August 2026',
+      items: [
+        { type: 'fix', text: 'Redesigned the background: added a woven, interlacing ribbon layer on top of the color blobs, and made the motion much more visible (bigger, faster movement) instead of a barely-perceptible morph.' },
+        { type: 'fix', text: 'Fixed the Today/Upcoming/All/Completed tabs not animating — a background-image swap can\u2019t be CSS-transitioned, so it always snapped instantly. Replaced with a sliding indicator that glides between tabs.' }
+      ]
+    },
+    {
+      version: '1.1.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'Restore a backup from an uploaded Excel (.xlsx) file, in addition to JSON.' },
+        { type: 'feat', text: 'Smooth, liquid-like morphing gradient background with slower, more organic shape shifts.' },
+        { type: 'feat', text: 'Momentum Coach — local, rule-based suggestions based on your own tasks (no data leaves your browser).' },
+        { type: 'feat', text: 'This "What\u2019s New" panel, so you can see what changed in each version.' },
+        { type: 'feat', text: 'Footer credit and rights notice.' },
+        { type: 'fix', text: 'Removed the small dot behind the completion percentage in the progress ring.' },
+        { type: 'fix', text: 'Added smooth spring-style press animations to buttons, checkboxes, and modal open/close transitions.' },
+        { type: 'fix', text: 'On mobile, the "new task" modal now opens centered on screen instead of behind the keyboard.' }
+      ]
+    },
+    {
+      version: '1.0.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'Initial release: daily task tracking with subtasks, categories, priority, and daily-repeat tasks.' },
+        { type: 'feat', text: 'Today / Upcoming / All / Completed views, streak counter, and daily completion ring.' },
+        { type: 'feat', text: 'Light and dark mode, animated gradient background, liquid-glass UI.' },
+        { type: 'feat', text: 'Export tasks to Excel, Word, and PDF; JSON backup/restore for moving data between devices.' }
+      ]
+    }
+  ];
 
   // ---------- storage helpers ----------
   function loadJSON(key, fallback) {
@@ -379,14 +486,34 @@
     expandedTaskIds[taskId] = true;
   });
 
-  // ---------- filter tabs ----------
-  document.getElementById('filterTabs').addEventListener('click', function (e) {
+  // ---------- filter tabs (with a sliding indicator, since a background-image swap
+  // like the old gradient-on-active approach can't be CSS-transitioned smoothly) ----------
+  var filterTabsEl = document.getElementById('filterTabs');
+  var tabIndicator = document.getElementById('tabIndicator');
+
+  function moveTabIndicator(btn) {
+    if (!btn) return;
+    var containerRect = filterTabsEl.getBoundingClientRect();
+    var btnRect = btn.getBoundingClientRect();
+    tabIndicator.style.width = btnRect.width + 'px';
+    tabIndicator.style.transform = 'translateX(' + (btnRect.left - containerRect.left - 4) + 'px)';
+  }
+
+  filterTabsEl.addEventListener('click', function (e) {
     var btn = e.target.closest('.tab');
     if (!btn) return;
     filter = btn.getAttribute('data-filter');
     document.querySelectorAll('#filterTabs .tab').forEach(function (b) { b.classList.toggle('active', b === btn); });
+    moveTabIndicator(btn);
     renderTaskList();
   });
+
+  window.addEventListener('resize', function () {
+    moveTabIndicator(filterTabsEl.querySelector('.tab.active'));
+  });
+
+  // Position the indicator once layout has settled (fonts/webfonts can shift widths slightly).
+  setTimeout(function () { moveTabIndicator(filterTabsEl.querySelector('.tab.active')); }, 60);
 
   // ---------- add task modal ----------
   var modal = document.getElementById('addTaskModal');
@@ -474,16 +601,25 @@
     document.getElementById('taskRepeat').checked = false;
     subtaskFieldsWrap.innerHTML = '';
     addSubtaskFieldRow('');
-    modal.hidden = false;
-    setTimeout(function () { document.getElementById('taskTitle').focus(); }, 50);
+    openOverlay(modal.closest('.modal-overlay'));
+    setTimeout(function () { document.getElementById('taskTitle').focus(); }, 200);
   }
-  function closeModal() { modal.hidden = true; closeAllDropdowns(); }
+  function closeModal() { closeOverlayEl(modal.closest('.modal-overlay')); closeAllDropdowns(); }
 
   document.getElementById('addTaskBtn').addEventListener('click', openModal);
-  modal.addEventListener('click', function (e) {
+  modal.closest('.modal-overlay').addEventListener('click', function (e) {
     if (e.target.closest('[data-close-modal]')) closeModal();
   });
   document.getElementById('addSubtaskField').addEventListener('click', function () { addSubtaskFieldRow(''); });
+
+  // Keep the focused field visible above the on-screen keyboard on mobile.
+  modal.addEventListener('focusin', function (e) {
+    if (e.target.matches('input, textarea, .dd-trigger')) {
+      setTimeout(function () {
+        e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 300);
+    }
+  });
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -574,7 +710,7 @@
       + '<h1 style="font-family:Calibri,Arial,sans-serif;">' + APP_NAME + ' — Task Report</h1>'
       + '<p style="font-family:Calibri,Arial,sans-serif;color:#666;font-size:11px;">Generated ' + new Date().toLocaleString() + ' · ' + APP_NAME + ' v' + APP_VERSION + '</p>'
       + '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:12px;width:100%;">'
-      + '<tr style="background:#5B2A9E;color:#fff;"><th>Date</th><th>Task / Subtask</th><th>Category</th><th>Priority</th><th>Status</th><th>Repeats</th></tr>'
+      + '<tr style="background:#FF3FA8;color:#fff;"><th>Date</th><th>Task / Subtask</th><th>Category</th><th>Priority</th><th>Status</th><th>Repeats</th></tr>'
       + body + '</table></body></html>';
 
     var blob = new Blob(['\ufeff', html], { type: 'application/msword' });
@@ -599,7 +735,7 @@
       head: [['Date', 'Task / Subtask', 'Category', 'Priority', 'Status', 'Repeats']],
       body: rows,
       styles: { fontSize: 9 },
-      headStyles: { fillColor: [91, 42, 158] }
+      headStyles: { fillColor: [255, 63, 168] }
     });
     doc.save(filenameBase() + '.pdf');
   }
@@ -621,10 +757,10 @@
     downloadBlob(blob, 'momentum-backup-' + todayStr() + '-v' + APP_VERSION + '.json');
   }
 
-  var restoreInput = document.getElementById('restoreInput');
-  function restoreJson() { restoreInput.click(); }
-  restoreInput.addEventListener('change', function () {
-    var file = restoreInput.files[0];
+  var restoreJsonInput = document.getElementById('restoreJsonInput');
+  function restoreJson() { restoreJsonInput.click(); }
+  restoreJsonInput.addEventListener('change', function () {
+    var file = restoreJsonInput.files[0];
     if (!file) return;
     var reader = new FileReader();
     reader.onload = function () {
@@ -636,13 +772,89 @@
         persistTasks();
         persistCategories();
         renderAll();
-        showToast('Backup restored successfully.');
+        showToast('Backup restored from JSON successfully.');
       } catch (err) {
         showToast('This file does not look like a valid Momentum backup.');
       }
     };
     reader.readAsText(file);
-    restoreInput.value = '';
+    restoreJsonInput.value = '';
+  });
+
+  // Reconstruct tasks + subtasks from the flattened rows produced by exportExcel().
+  // Rows sharing Date+Task+Category+Priority+Repeats belong to the same task; each row's
+  // Subtask/Subtask Status column (if present) becomes one subtask on that task.
+  function reconstructTasksFromRows(rows) {
+    var order = [];
+    var map = {};
+    var categoriesSeen = {};
+    rows.forEach(function (r) {
+      var date = String(r.Date || '').trim();
+      var title = String(r.Task || '').trim();
+      var category = String(r.Category || 'General').trim() || 'General';
+      var priority = String(r.Priority || 'medium').trim().toLowerCase();
+      if (['low', 'medium', 'high'].indexOf(priority) === -1) priority = 'medium';
+      var repeatDaily = String(r.Repeats || '').trim().toLowerCase() === 'daily';
+      var status = String(r.Status || '').trim().toLowerCase();
+      var subtaskTitle = String(r.Subtask || '').trim();
+      var subStatus = String(r['Subtask Status'] || '').trim().toLowerCase();
+      if (!title || !date) return;
+
+      var key = date + '::' + title + '::' + category + '::' + priority + '::' + (repeatDaily ? '1' : '0');
+      if (!map[key]) {
+        map[key] = {
+          id: uid(),
+          seriesId: repeatDaily ? uid() : null,
+          title: title,
+          category: category,
+          priority: priority,
+          date: date,
+          repeatDaily: repeatDaily,
+          done: status === 'done',
+          subtasks: [],
+          createdAt: new Date().toISOString()
+        };
+        order.push(key);
+        categoriesSeen[category] = true;
+      }
+      if (subtaskTitle) {
+        map[key].subtasks.push({ id: uid(), title: subtaskTitle, done: subStatus === 'done' });
+      }
+    });
+    return { tasks: order.map(function (k) { return map[k]; }), categories: Object.keys(categoriesSeen) };
+  }
+
+  var restoreXlsxInput = document.getElementById('restoreXlsxInput');
+  function restoreXlsx() { restoreXlsxInput.click(); }
+  restoreXlsxInput.addEventListener('change', function () {
+    var file = restoreXlsxInput.files[0];
+    if (!file) return;
+    if (typeof XLSX === 'undefined') {
+      showToast('Excel library failed to load — check your connection and try again.');
+      restoreXlsxInput.value = '';
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = new Uint8Array(reader.result);
+        var wb = XLSX.read(data, { type: 'array' });
+        var sheet = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        var imported = reconstructTasksFromRows(rows);
+        if (!imported.tasks.length) throw new Error('No tasks found in that spreadsheet.');
+        tasks = imported.tasks;
+        categories = imported.categories.length ? imported.categories : DEFAULT_CATEGORIES.slice();
+        persistTasks();
+        persistCategories();
+        renderAll();
+        showToast('Backup restored from Excel successfully. (Notes aren\u2019t stored in Excel exports — use a JSON backup to keep those.)');
+      } catch (err) {
+        showToast(err instanceof Error && err.message ? err.message : 'Could not read that Excel file.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    restoreXlsxInput.value = '';
   });
 
   exportMenu.addEventListener('click', function (e) {
@@ -654,12 +866,159 @@
     else if (action === 'export-docx') exportWord();
     else if (action === 'export-pdf') exportPdf();
     else if (action === 'backup') backupJson();
-    else if (action === 'restore') restoreJson();
+    else if (action === 'restore-json') restoreJson();
+    else if (action === 'restore-xlsx') restoreXlsx();
   });
+
+  // ---------- Momentum Coach (local, rule-based — no external calls) ----------
+  function computeCoachTips() {
+    var today = todayStr();
+    var stats = computeStats();
+    var tips = [];
+
+    if (stats.todayTotal === 0) {
+      tips.push('You haven\u2019t added anything for today yet. Tap + to set your first task and get moving.');
+    } else if (stats.completion === 100) {
+      tips.push('Everything on today\u2019s list is done. \uD83C\uDF89 Nice work — maybe get a head start on tomorrow?');
+    } else {
+      var remaining = stats.todayTotal - stats.todayDone;
+      tips.push('You\u2019re at ' + stats.completion + '% today with ' + remaining + ' task' + (remaining === 1 ? '' : 's') + ' left. You can still close this out.');
+    }
+
+    if (stats.streak >= 3) {
+      tips.push('\uD83D\uDD25 You\u2019re on a ' + stats.streak + '-day streak — that kind of consistency compounds. Keep it going.');
+    }
+
+    var overdue = tasks.filter(function (t) { return !t.done && t.date < today && !t.repeatDaily; });
+    if (overdue.length > 0) {
+      tips.push('You have ' + overdue.length + ' task' + (overdue.length === 1 ? '' : 's') + ' from previous days still open. Worth clearing them out or moving the date so they don\u2019t pile up.');
+    }
+
+    var stalePriority = tasks.filter(function (t) { return !t.done && t.priority === 'high' && t.date < today; })
+      .sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
+    if (stalePriority) {
+      tips.push('"' + stalePriority.title + '" is marked high priority and has been open since ' + stalePriority.date + '. Might be worth tackling that one first today.');
+    }
+
+    var stuck = tasks.filter(function (t) {
+      return !t.done && t.date === today && t.subtasks.length >= 3 && t.subtasks.every(function (s) { return !s.done; });
+    })[0];
+    if (stuck) {
+      tips.push('"' + stuck.title + '" has ' + stuck.subtasks.length + ' subtasks and none checked off yet. Try knocking out just one — momentum builds from there.');
+    }
+
+    var openByCategory = {};
+    var openTotal = 0;
+    tasks.filter(function (t) { return !t.done; }).forEach(function (t) {
+      openByCategory[t.category] = (openByCategory[t.category] || 0) + 1;
+      openTotal += 1;
+    });
+    var topCategory = null;
+    Object.keys(openByCategory).forEach(function (c) {
+      if (!topCategory || openByCategory[c] > openByCategory[topCategory]) topCategory = c;
+    });
+    if (topCategory && openTotal >= 4 && openByCategory[topCategory] / openTotal > 0.6) {
+      tips.push('Most of your open tasks are in "' + topCategory + '". Blocking dedicated time for that category could clear a lot at once.');
+    }
+
+    if (tips.length === 0) {
+      tips.push('You\u2019re all caught up — nothing urgent to flag right now.');
+    }
+    return tips.slice(0, 4);
+  }
+
+  function renderCoachTips() {
+    var wrap = document.getElementById('coachTips');
+    var tips = computeCoachTips();
+    wrap.innerHTML = tips.map(function (t) {
+      return '<div class="coach-tip"><div class="coach-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg></div><p>' + escapeHtml(t) + '</p></div>';
+    }).join('');
+  }
+
+  // ---------- What's new ----------
+  function renderWhatsNew() {
+    var wrap = document.getElementById('whatsNewBody');
+    wrap.innerHTML = CHANGELOG.map(function (entry) {
+      var items = entry.items.map(function (it) {
+        return '<li class="' + (it.type === 'fix' ? 'fix' : 'feat') + '">' + escapeHtml(it.text) + '</li>';
+      }).join('');
+      return '<div class="whats-new-version"><h3><span class="v-badge">v' + entry.version + '</span>' + escapeHtml(entry.date) + '</h3><ul>' + items + '</ul></div>';
+    }).join('');
+  }
+
+  // ---------- generic overlay open/close (backdrop fade + liquid-glass scale-in) ----------
+  var OVERLAY_ANIM_MS = 320;
+  function openOverlay(el) {
+    el.hidden = false;
+    void el.offsetWidth; // force reflow so the transition plays
+    el.classList.add('is-open');
+  }
+  function closeOverlayEl(el) {
+    el.classList.remove('is-open');
+    setTimeout(function () { el.hidden = true; }, OVERLAY_ANIM_MS);
+  }
+
+  var coachModal = document.getElementById('coachModal');
+  document.getElementById('coachBtn').addEventListener('click', function () {
+    renderCoachTips();
+    openOverlay(coachModal);
+  });
+  coachModal.addEventListener('click', function (e) {
+    if (e.target.closest('[data-close-modal]')) closeOverlayEl(coachModal);
+  });
+
+  var whatsNewModal = document.getElementById('whatsNewModal');
+  function openWhatsNew() { renderWhatsNew(); openOverlay(whatsNewModal); }
+  document.getElementById('whatsNewBtn').addEventListener('click', openWhatsNew);
+  whatsNewModal.addEventListener('click', function (e) {
+    if (e.target.closest('[data-close-modal]')) closeOverlayEl(whatsNewModal);
+  });
+
+  // ---------- inspirational quote rotator ----------
+  var QUOTES = [
+    'Small steps, done today, beat big plans done someday.',
+    'Discipline is choosing what you want most over what you want now.',
+    'You don\u2019t have to see the whole staircase — just take the first step.',
+    'Progress, not perfection.',
+    'The secret of getting ahead is getting started.',
+    'Done is better than perfect — finish the task in front of you.',
+    'A little progress each day adds up to big results.',
+    'Motivation gets you started. Habit keeps you going.',
+    'Your future is created by what you do today, not tomorrow.',
+    'Focus on being productive instead of busy.',
+    'One task at a time — that\u2019s how momentum builds.',
+    'The best time to start was earlier. The next best time is now.'
+  ];
+  function startQuoteRotator() {
+    var bar = document.getElementById('quoteBar');
+    var textEl = document.getElementById('quoteText');
+    if (!bar || !textEl) return;
+    var i = Math.floor(Math.random() * QUOTES.length);
+    textEl.textContent = QUOTES[i];
+    setInterval(function () {
+      bar.classList.add('fading');
+      setTimeout(function () {
+        i = (i + 1) % QUOTES.length;
+        textEl.textContent = QUOTES[i];
+        bar.classList.remove('fading');
+      }, 400);
+    }, 8000);
+  }
 
   // ---------- init ----------
   document.getElementById('versionLabel').textContent = APP_VERSION;
+  document.getElementById('yearLabel').textContent = new Date().getFullYear();
   applyTheme();
+  startQuoteRotator();
   carryOverRecurringTasks();
   renderAll();
+
+  // Auto-open "What's new" once per version, on the first load after an update.
+  var lastSeen = loadJSON(LAST_SEEN_VERSION_KEY, null);
+  if (lastSeen !== APP_VERSION) {
+    saveJSON(LAST_SEEN_VERSION_KEY, APP_VERSION);
+    if (lastSeen !== null) {
+      setTimeout(openWhatsNew, 500);
+    }
+  }
 })();

@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0B0B25" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+<meta name="theme-color" content="#ffc98f" />
 <meta name="description" content="Momentum — Focus. Plan. Achieve. A daily task tracker with liquid-glass design." />
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
 <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png" />
@@ -21,12 +21,9 @@
 <body>
 
 <div class="momentum-bg" aria-hidden="true">
-  <div class="blob blob-orange"></div>
-  <div class="blob blob-purple"></div>
-  <div class="blob blob-cyan"></div>
-  <div class="blob blob-teal"></div>
+  <div class="blob blob-pink"></div>
+  <div class="blob blob-blue"></div>
   <div class="blob blob-green"></div>
-  <div class="blob blob-navy"></div>
   <div class="grain"></div>
 </div>
 
@@ -54,14 +51,27 @@
           <button class="menu-item" data-action="export-pdf">Export as PDF</button>
           <p class="menu-label">Sync across devices</p>
           <button class="menu-item" data-action="backup">Download backup (.json)</button>
-          <button class="menu-item" data-action="restore">Restore from backup…</button>
-          <input type="file" id="restoreInput" accept="application/json" hidden />
-          <p class="menu-note">Tasks live in this browser only. Download a backup here, then restore it on your other device to bring everything across.</p>
+          <button class="menu-item" data-action="restore-json">Restore from .json backup…</button>
+          <button class="menu-item" data-action="restore-xlsx">Restore from .xlsx backup…</button>
+          <input type="file" id="restoreJsonInput" accept="application/json" hidden />
+          <input type="file" id="restoreXlsxInput" accept=".xlsx,.xls" hidden />
+          <p class="menu-note">Tasks live in this browser only. Download a backup here, then restore it on your other device to bring everything across. (Excel restore skips notes — use JSON for a full-fidelity backup.)</p>
         </div>
       </div>
+      <button id="whatsNewBtn" class="glass-btn round" aria-label="What's new">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M3 12h3M18 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button id="coachBtn" class="glass-btn round" aria-label="Momentum coach">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-7 7c0 2.4 1.2 4.5 3 5.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3c1.8-1.2 3-3.3 3-5.7a7 7 0 0 0-7-7Z"/><path d="M9.5 21h5M10 17.5h4"/></svg>
+      </button>
       <button id="themeToggle" class="glass-btn round" aria-label="Toggle dark mode"></button>
     </div>
   </header>
+
+  <div id="quoteBar" class="quote-bar glass">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" class="quote-icon"><path d="M7 7c-2.2 0-4 1.8-4 4v6h6v-6H6.2C6.6 9.5 8 8.2 10 8V7c-1 0-2 0-3 0Zm10 0c-2.2 0-4 1.8-4 4v6h6v-6h-2.8c.4-1.5 1.8-2.8 3.8-3V7c-1 0-2 0-3 0Z"/></svg>
+    <span id="quoteText"></span>
+  </div>
 
   <div id="toast" class="toast" hidden></div>
 
@@ -70,14 +80,13 @@
       <svg id="ringSvg" width="96" height="96" viewBox="0 0 96 96" class="ring-svg">
         <defs>
           <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#5B2A9E" />
+            <stop offset="0%" stop-color="#FF3FA8" />
             <stop offset="55%" stop-color="#22C6EE" />
             <stop offset="100%" stop-color="#7DD263" />
           </linearGradient>
         </defs>
         <circle cx="48" cy="48" r="43.5" fill="none" stroke="currentColor" class="ring-track" stroke-width="9"/>
         <circle id="ringProgress" cx="48" cy="48" r="43.5" fill="none" stroke="url(#ringGradient)" stroke-width="9" stroke-linecap="round" transform="rotate(-90 48 48)"/>
-        <circle cx="48" cy="48" r="6.3" fill="url(#ringGradient)" />
       </svg>
       <div class="ring-center">
         <span id="ringLabel">0%</span>
@@ -99,6 +108,7 @@
   </section>
 
   <nav id="filterTabs" class="glass filter-tabs">
+    <div id="tabIndicator" class="tab-indicator"></div>
     <button class="tab active" data-filter="today">Today</button>
     <button class="tab" data-filter="upcoming">Upcoming</button>
     <button class="tab" data-filter="all">All</button>
@@ -107,12 +117,44 @@
 
   <main id="taskList" class="task-list"></main>
 
-  <footer class="app-footer">Momentum v<span id="versionLabel"></span></footer>
+  <footer class="app-footer">
+    <p>Momentum v<span id="versionLabel"></span> · © <span id="yearLabel"></span> All rights reserved.</p>
+    <p>Made and maintained by <a href="https://azmainfaik.vercel.app/" target="_blank" rel="noopener noreferrer">Chowdhury Azmain Faik</a></p>
+  </footer>
 </div>
 
 <button id="addTaskBtn" class="fab" aria-label="Add task">
   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
 </button>
+
+<!-- Coach panel -->
+<div id="coachModal" class="modal-overlay" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="glass-strong modal">
+    <div class="modal-head">
+      <h2>Momentum Coach</h2>
+      <button type="button" class="glass-btn round small" data-close-modal aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="coach-subtitle">A few notes based on your own tasks — nothing sent anywhere, all local.</p>
+    <div id="coachTips" class="coach-tips"></div>
+  </div>
+</div>
+
+<!-- What's new modal -->
+<div id="whatsNewModal" class="modal-overlay" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="glass-strong modal">
+    <div class="modal-head">
+      <h2>What's new</h2>
+      <button type="button" class="glass-btn round small" data-close-modal aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="whatsNewBody" class="whats-new-body"></div>
+  </div>
+</div>
 
 <!-- Add task modal -->
 <div id="addTaskModal" class="modal-overlay" hidden>
