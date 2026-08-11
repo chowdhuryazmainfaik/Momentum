@@ -205,6 +205,43 @@ html.dark .brand .logo-dark{ display:block; }
 .header-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
 @media (max-width:480px){ .hide-mobile{ display:none; } }
 
+/* "More" (hot-dog) menu — collapses Install/What's New/Coach/Theme into one dropdown on
+   narrow screens, so the header doesn't turn into a row of near-identical round icons.
+   On wider screens the panel is display:contents, so its buttons just render inline as
+   normal, and the hot-dog trigger itself stays hidden. */
+.more-menu-wrap{ position:relative; }
+.more-menu-btn{ display:none; }
+.more-menu-panel{ display:contents; }
+.more-menu-label{ display:none; }
+
+@media (max-width:640px){
+  .more-menu-btn{ display:inline-flex; }
+  .more-menu-panel[hidden]{ display:none; }
+  .more-menu-panel:not([hidden]){
+    display:flex; flex-direction:column; gap:6px; align-items:stretch;
+    position:absolute; right:0; top:52px; z-index:50; width:200px;
+    padding:10px; border-radius:22px;
+    background: rgba(255,255,255,.72);
+    border:1px solid rgba(255,255,255,.85);
+    backdrop-filter: blur(40px) saturate(190%);
+    -webkit-backdrop-filter: blur(40px) saturate(190%);
+    box-shadow: 0 20px 50px rgba(30,60,110,.16);
+  }
+  html.dark .more-menu-panel:not([hidden]){
+    background: rgba(16,18,24,.7);
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow: 0 20px 60px rgba(0,0,0,.55);
+  }
+  .more-menu-panel:not([hidden]) .glass-btn.round{
+    width:auto; height:auto; border-radius:14px; justify-content:flex-start; gap:10px;
+    padding:10px 12px; font-size:13.5px; font-weight:500; background:none; border:none; box-shadow:none;
+  }
+  .more-menu-panel:not([hidden]) .glass-btn.round:hover{ background: rgba(0,0,0,.06); }
+  html.dark .more-menu-panel:not([hidden]) .glass-btn.round:hover{ background: rgba(255,255,255,.08); }
+  .more-menu-panel:not([hidden]) .more-menu-label{ display:inline; }
+  .more-menu-panel:not([hidden]) .install-pill{ width:100%; justify-content:center; }
+}
+
 /* theme toggle icon swap via data attr, drawn with inline svg injected by JS */
 
 /* export menu */

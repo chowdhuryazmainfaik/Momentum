@@ -1,6 +1,6 @@
 # Momentum — Focus. Plan. Achieve.
 
-**Version 3.4.3** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
+**Version 3.5.1** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
 
 ## Run it
 

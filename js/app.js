@@ -3,7 +3,7 @@
 
   var APP_NAME = 'Momentum';
   var APP_TAGLINE = 'Focus. Plan. Achieve.';
-  var APP_VERSION = '3.4.3';
+  var APP_VERSION = '3.5.1';
 
   var TASKS_KEY = 'momentum.tasks.v1';
   var CATEGORIES_KEY = 'momentum.categories.v1';
@@ -12,6 +12,20 @@
   var DEFAULT_CATEGORIES = ['Personal', 'Work', 'Health', 'Learning'];
 
   var CHANGELOG = [
+    {
+      version: '3.5.1',
+      date: 'August 2026',
+      items: [
+        { type: 'fix', text: 'The theme toggle inside the mobile "more" menu had no text label, leaving a blank-looking row. It now shows "Light Mode" while you\u2019re in dark mode, and "Dark Mode" while you\u2019re in light mode \u2014 labeled by what tapping it switches you to.' }
+      ]
+    },
+    {
+      version: '3.5.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'On narrow/mobile screens, the header now shows just Export/Sync plus a single "more" menu (\u2261) instead of a row of separate icon buttons. Install App, What\u2019s New, Coach, and the theme toggle live inside it, each with a label. Wider screens are unchanged \u2014 all buttons show individually as before.' }
+      ]
+    },
     {
       version: '3.4.3',
       date: 'August 2026',
@@ -194,9 +208,13 @@
   function renderThemeIcon() {
     var btn = document.getElementById('themeToggle');
     var isDark = theme === 'dark';
-    btn.innerHTML = isDark
+    // Label describes what clicking it switches TO, not the current state.
+    var label = isDark ? 'Light Mode' : 'Dark Mode';
+    btn.setAttribute('aria-label', 'Switch to ' + label.toLowerCase());
+    btn.innerHTML = (isDark
       ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
-      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>')
+      + '<span class="more-menu-label">' + label + '</span>';
   }
   document.getElementById('themeToggle').addEventListener('click', function () {
     theme = theme === 'dark' ? 'light' : 'dark';
@@ -690,6 +708,25 @@
   });
   document.addEventListener('click', function (e) {
     if (!exportMenu.hidden && !exportMenu.contains(e.target) && e.target !== exportBtn) closeExportMenu();
+  });
+
+  // ---------- "more" (hot-dog) menu — mobile only; a no-op wrapper on wider screens
+  // since the panel is display:contents there and its buttons work exactly as before ----------
+  var moreMenuBtn = document.getElementById('moreMenuBtn');
+  var moreMenuPanel = document.getElementById('moreMenuPanel');
+  function closeMoreMenu() { moreMenuPanel.hidden = true; moreMenuBtn.setAttribute('aria-expanded', 'false'); }
+  moreMenuBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var willOpen = moreMenuPanel.hidden;
+    moreMenuPanel.hidden = !willOpen;
+    moreMenuBtn.setAttribute('aria-expanded', String(willOpen));
+  });
+  document.addEventListener('click', function (e) {
+    if (!moreMenuPanel.hidden && !moreMenuPanel.contains(e.target) && e.target !== moreMenuBtn) closeMoreMenu();
+  });
+  // Picking anything inside the panel closes it too, same as a normal mobile menu.
+  moreMenuPanel.addEventListener('click', function (e) {
+    if (e.target.closest('button')) closeMoreMenu();
   });
 
   function showToast(message) {

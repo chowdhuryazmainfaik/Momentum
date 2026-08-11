@@ -2,6 +2,14 @@
 
 All notable changes to Momentum are documented here.
 
+## v3.5.1
+
+- The theme toggle inside the mobile "more" menu had no text label, leaving a blank-looking row. It now shows "Light Mode" while in dark mode, and "Dark Mode" while in light mode — labeled by what tapping it switches you to.
+
+## v3.5.0
+
+- On narrow/mobile screens, the header now shows just Export/Sync plus a single "more" menu (☰) instead of a row of separate icon buttons. Install App, What's New, Coach, and the theme toggle live inside it, each with a label. Wider screens are unchanged.
+
 ## v3.4.3
 
 - Fixed the Install App button looking identical to the Export/Sync button — both used the same download-tray arrow icon and both lost their text on mobile, leaving two indistinguishable round icons. Install App now has its own device+plus icon and keeps its text label on all screen sizes.
