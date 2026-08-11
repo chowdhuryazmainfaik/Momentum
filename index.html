@@ -39,6 +39,10 @@
       </div>
     </div>
     <div class="header-actions">
+      <button id="installBtn" class="glass-btn pill install-pill" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M12 10v6M9 13h6"/><path d="M10 19h4"/></svg>
+        <span>Install App</span>
+      </button>
       <div class="export-wrap">
         <button id="exportBtn" class="glass-btn pill" aria-haspopup="true" aria-expanded="false">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3m0 12-4-4m4 4 4-4M3 17v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/></svg>
@@ -57,7 +61,6 @@
           <input type="file" id="restoreXlsxInput" accept=".xlsx,.xls" hidden />
           <p class="menu-note">Tasks live in this browser only. Download a backup here, then restore it on your other device to bring everything across. (Excel restore skips notes — use JSON for a full-fidelity backup.)</p>
           <p class="menu-label">App</p>
-          <button id="installMenuItem" class="menu-item" data-action="install" hidden>📲 Install Momentum app</button>
           <button id="notifyMenuItem" class="menu-item" data-action="notify">🔔 Enable priority task reminders</button>
         </div>
       </div>

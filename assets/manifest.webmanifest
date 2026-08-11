@@ -1,7 +1,8 @@
 {
   "name": "Momentum — Focus. Plan. Achieve.",
   "short_name": "Momentum",
-  "start_url": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a0b12",
   "theme_color": "#FF3FA8",

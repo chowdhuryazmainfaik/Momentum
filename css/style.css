@@ -172,6 +172,20 @@ html.dark .glass-btn{
 .glass-btn.round.small{ width:32px; height:32px; }
 .glass-btn.pill{ height:44px; padding:0 16px; border-radius:999px; display:inline-flex; align-items:center; gap:8px; font-size:14px; font-weight:500; }
 
+/* Install button — an accent-colored CTA rather than a neutral glass button, so it reads
+   as an action worth noticing, similar to a dedicated "Install App" button. */
+.install-pill{
+  background: linear-gradient(90deg,#FF3FA8,#3FA0FF);
+  border:1px solid rgba(255,255,255,.5);
+  color:#fff;
+  box-shadow: 0 8px 24px -6px rgba(255,63,168,.5), inset 0 1px 1px rgba(255,255,255,.5);
+}
+.install-pill::before{
+  content:""; position:absolute; inset:0 0 55% 0; border-radius:999px 999px 0 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.5), transparent); pointer-events:none;
+}
+html.dark .install-pill{ border:1px solid rgba(255,255,255,.3); }
+
 ::-webkit-scrollbar{ width:8px; height:8px; }
 ::-webkit-scrollbar-thumb{ background: rgba(0,0,0,.15); border-radius:8px; }
 html.dark ::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.2); }

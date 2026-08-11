@@ -2,6 +2,20 @@
 
 All notable changes to Momentum are documented here.
 
+## v3.4.3
+
+- Fixed the Install App button looking identical to the Export/Sync button — both used the same download-tray arrow icon and both lost their text on mobile, leaving two indistinguishable round icons. Install App now has its own device+plus icon and keeps its text label on all screen sizes.
+
+## v3.4.2
+
+- Service worker now checks for updates on every page load and auto-refreshes an open tab once a newer version takes over, so future fixes reach people without a manual hard-refresh
+- Important: this does not retroactively fix an already-installed shortcut from before the v3.4.1 start_url fix — that's baked into the OS at install time. See the README's Troubleshooting section for exact uninstall/reinstall steps per platform
+
+## v3.4.1
+
+- Fixed the installed app opening to a 404 page — the manifest's `start_url` was `"./"`, which resolves relative to the manifest file's own folder (`assets/`) rather than the site root. Now set explicitly to `"/"`, with an explicit `scope` too.
+- Replaced the buried "Install" menu item with a dedicated, accent-colored Install App button in the header — visible whenever the app is installable, hidden automatically once installed or already running standalone.
+
 ## v3.4.0
 
 - Added a promo card above the footer for Daybook (expense & income tracking) — https://daybook-az.vercel.app/

@@ -2,7 +2,7 @@
 // and its shell still loads without a network connection. Task data itself lives in
 // localStorage, not here.
 
-var CACHE_NAME = 'momentum-cache-v1';
+var CACHE_NAME = 'momentum-cache-v3';
 var CORE_ASSETS = [
   './',
   './index.html',

@@ -3,7 +3,7 @@
 
   var APP_NAME = 'Momentum';
   var APP_TAGLINE = 'Focus. Plan. Achieve.';
-  var APP_VERSION = '3.4.0';
+  var APP_VERSION = '3.4.3';
 
   var TASKS_KEY = 'momentum.tasks.v1';
   var CATEGORIES_KEY = 'momentum.categories.v1';
@@ -12,6 +12,29 @@
   var DEFAULT_CATEGORIES = ['Personal', 'Work', 'Health', 'Learning'];
 
   var CHANGELOG = [
+    {
+      version: '3.4.3',
+      date: 'August 2026',
+      items: [
+        { type: 'fix', text: 'The Install App button used the exact same download-tray arrow icon as the Export/Sync button, and both lost their text label on mobile \u2014 leaving two identical-looking round icons in the header. Install App now has its own distinct device+plus icon and always keeps its text label, even on mobile.' }
+      ]
+    },
+    {
+      version: '3.4.2',
+      date: 'August 2026',
+      items: [
+        { type: 'fix', text: 'Service worker now checks for updates on every page load and auto-refreshes an open tab once a newer version takes over, so future fixes reach people without needing a manual hard-refresh.' },
+        { type: 'fix', text: 'Important: this does not retroactively fix an already-installed shortcut from before the v3.4.1 start_url fix \u2014 that\u2019s baked into the OS at install time. If your installed icon still opens to a 404 or an /assets/ file listing, you must uninstall it and reinstall from the Install App button. See the README for exact steps per platform.' }
+      ]
+    },
+    {
+      version: '3.4.1',
+      date: 'August 2026',
+      items: [
+        { type: 'fix', text: 'Fixed the installed app opening to a 404 page. The manifest\u2019s start_url was "./", which resolves relative to the manifest file\u2019s own folder (assets/) rather than the site root \u2014 the same category of relative-path bug as an earlier CSS fix, just in a new spot. It now points at "/" explicitly, with an explicit scope too.' },
+        { type: 'feat', text: 'Replaced the buried "Install" menu item with a dedicated, accent-colored Install App button in the header \u2014 visible whenever the app is installable, hidden automatically once it\u2019s installed or already running standalone.' }
+      ]
+    },
     {
       version: '3.4.0',
       date: 'August 2026',
@@ -919,7 +942,6 @@
     else if (action === 'backup') backupJson();
     else if (action === 'restore-json') restoreJson();
     else if (action === 'restore-xlsx') restoreXlsx();
-    else if (action === 'install') triggerInstall();
     else if (action === 'notify') toggleNotifications();
   });
 
@@ -1060,39 +1082,77 @@
 
   // ---------- PWA install ----------
   var deferredInstallPrompt = null;
-  var installMenuItem = document.getElementById('installMenuItem');
+  var installBtn = document.getElementById('installBtn');
+
+  function isRunningStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: window-controls-overlay)').matches
+      || window.navigator.standalone === true; // iOS Safari's own flag
+  }
+
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  function updateInstallButtonVisibility() {
+    if (isRunningStandalone()) {
+      // Already installed and running as the app itself — nothing to offer.
+      installBtn.hidden = true;
+      return;
+    }
+    // iOS has no beforeinstallprompt API at all, but people still need a way to find the
+    // manual "Add to Home Screen" steps, so keep the button visible there regardless.
+    installBtn.hidden = !(deferredInstallPrompt || isIOS);
+  }
 
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
     deferredInstallPrompt = e;
-    installMenuItem.hidden = false;
+    updateInstallButtonVisibility();
   });
 
   function triggerInstall() {
     if (!deferredInstallPrompt) {
-      // Most likely iOS Safari, or a browser without install-prompt support — there's no
-      // programmatic install API there, so point the person at the manual steps instead.
-      var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      // Most likely iOS Safari, or a desktop/browser without install-prompt support — there's
+      // no programmatic install API there, so point the person at the manual steps instead.
       showToast(isIOS
         ? 'On iPhone/iPad: tap the Share icon, then "Add to Home Screen".'
-        : 'Your browser doesn\u2019t support one-tap install here — look for "Add to Home Screen" or "Install app" in its menu.');
+        : 'Look for "Install app" or "Add to Home Screen" in your browser\u2019s menu (often the \u22ee or \u2261 icon, or an icon in the address bar).');
       return;
     }
+    installBtn.disabled = true;
     deferredInstallPrompt.prompt();
     deferredInstallPrompt.userChoice.finally(function () {
       deferredInstallPrompt = null;
-      installMenuItem.hidden = true;
+      installBtn.disabled = false;
+      updateInstallButtonVisibility();
     });
   }
 
+  installBtn.addEventListener('click', triggerInstall);
+
   window.addEventListener('appinstalled', function () {
-    installMenuItem.hidden = true;
-    showToast('Momentum installed \u2014 you can now open it like any other app.');
+    installBtn.hidden = true;
+    showToast('Momentum installed \u2014 open it from your home screen or app list from now on.');
   });
 
+  updateInstallButtonVisibility();
+
   if ('serviceWorker' in navigator) {
+    // Auto-refresh once when a newer service worker takes over, so a fixed deployment
+    // reaches an already-open tab without the person needing to know to hard-refresh.
+    // (This does NOT fix an already-installed shortcut's baked-in start_url — that's an
+    // OS-level install record, not something a service worker can rewrite. It only helps
+    // the page's own cached files and future deployments update themselves.)
+    var _swRefreshed = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (_swRefreshed) return;
+      _swRefreshed = true;
+      window.location.reload();
+    });
+
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js').catch(function () {
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        reg.update(); // check for a newer sw.js on every load, don't wait for the browser's own schedule
+      }).catch(function () {
         // Fails silently when opened straight from disk (file://) or offline on first load —
         // the app still works normally without the service worker, just without offline caching.
       });

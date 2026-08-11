@@ -1,6 +1,6 @@
 # Momentum — Focus. Plan. Achieve.
 
-**Version 3.4.0** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
+**Version 3.4.3** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
 
 ## Run it
 
@@ -36,10 +36,23 @@ CHANGELOG.md       Version history
 - **Backup / Restore** as JSON or Excel, to carry your tasks between devices — download a backup on one device, restore it on the other. (Excel restore doesn't preserve task notes — use JSON for full-fidelity backups.)
 - **Momentum Coach** — a panel with a few observations about your current tasks (overdue items, streaks, stale high-priority tasks, etc.), computed entirely from your local data. No account, no external API calls.
 - **What's New** — see what changed in the current version any time; it also opens automatically once after an update.
-- **Install as an app** — from the Export/Sync menu, install Momentum to your device like a native app (Chrome/Edge/Android support one-tap install; iOS Safari needs the manual "Add to Home Screen" step, which the app will tell you).
+- **Install as an app** — a dedicated "Install App" button appears in the header whenever the app is installable (Chrome/Edge/Android support one-tap install; iOS Safari needs the manual "Add to Home Screen" step, which the button will tell you). It disappears automatically once installed or when already running as the installed app.
 - **Priority task reminders** — opt in from the same menu for a browser notification about open high-priority tasks. This checks on load and hourly while the tab is open; it's a local notification only (no backend), so nothing arrives while the app is fully closed.
 - A small promo card links to [Daybook](https://daybook-az.vercel.app/) for expense & income tracking.
 - All data is stored in the browser (`localStorage`) — no account, no server
+
+## Troubleshooting: installed app opens to a 404 or a file listing
+
+This means the icon was installed **before** the v3.4.1 fix, back when the manifest's `start_url` pointed at the wrong place. Browsers bake that URL into the installed shortcut at install time and don't re-read it later — so simply redeploying the fix doesn't reach an icon that's already installed. You have to remove it and reinstall:
+
+1. **Uninstall the old shortcut:**
+   - **Windows (Chrome/Edge):** right-click the Start Menu/Desktop icon → Uninstall. Or open `chrome://apps`, right-click Momentum → Remove.
+   - **macOS (Chrome):** open `chrome://apps`, right-click Momentum → Delete.
+   - **Android:** long-press the home screen icon → Uninstall.
+   - **iOS:** long-press the home screen icon → Remove App → Delete App.
+2. **Clear the site's cached data** so the old service worker/manifest can't linger: in the browser, go to the site's settings (in Chrome: click the padlock/info icon in the address bar → "Site settings" → "Clear data"), or open DevTools → Application tab → "Clear site data."
+3. Visit the live site fresh in a normal browser tab and confirm it loads correctly (not a 404).
+4. Click **Install App** again to create a new shortcut.
 
 ## Notes
 
