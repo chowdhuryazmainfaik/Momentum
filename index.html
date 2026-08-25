@@ -17,6 +17,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+
+<!-- Import libraries — reading uploaded Word/PDF files needs real parsers, not just the
+     export libraries above. xlsx (already loaded) covers Excel; JSON needs nothing extra. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
 </head>
 <body>
 
@@ -56,6 +61,10 @@
           <input type="file" id="restoreJsonInput" accept="application/json" hidden />
           <input type="file" id="restoreXlsxInput" accept=".xlsx,.xls" hidden />
           <p class="menu-note">Tasks live in this browser only. Download a backup here, then restore it on your other device to bring everything across. (Excel restore skips notes — use JSON for a full-fidelity backup.)</p>
+          <p class="menu-label">Create from a document</p>
+          <button class="menu-item" data-action="import-doc">📄 Import PDF, Word, Excel, or JSON…</button>
+          <input type="file" id="importDocInput" accept=".pdf,.doc,.docx,.xlsx,.xls,.json" hidden />
+          <p class="menu-note">Turns one document into one task, with its bullet points (or rows/lines) added as subtasks — you\u2019ll get a chance to review and edit before it\u2019s saved.</p>
           <p class="menu-label">App</p>
           <button id="notifyMenuItem" class="menu-item" data-action="notify">🔔 Enable priority task reminders</button>
         </div>

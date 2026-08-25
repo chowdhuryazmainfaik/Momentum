@@ -3,7 +3,7 @@
 
   var APP_NAME = 'Momentum';
   var APP_TAGLINE = 'Focus. Plan. Achieve.';
-  var APP_VERSION = '3.5.1';
+  var APP_VERSION = '3.6.0';
 
   var TASKS_KEY = 'momentum.tasks.v1';
   var CATEGORIES_KEY = 'momentum.categories.v1';
@@ -12,6 +12,20 @@
   var DEFAULT_CATEGORIES = ['Personal', 'Work', 'Health', 'Learning'];
 
   var CHANGELOG = [
+    {
+      version: '3.6.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'Import a PDF, Word (.docx), Excel, or JSON file as a new task \u2014 the document becomes one task, and its bullet points (or list items, spreadsheet cells, or JSON array entries) become subtasks. Opens as a pre-filled draft in the New Task form so you can review and edit before saving anything.' }
+      ]
+    },
+    {
+      version: '3.5.2',
+      date: 'August 2026',
+      items: [
+        { type: 'fix', text: 'Fixed the hamburger ("more") menu button showing on every screen size instead of only on mobile. Root cause: the button also carries .glass-btn.round, and that compound selector\u2019s unconditional display:inline-flex had higher CSS specificity than the plain .more-menu-btn rule meant to hide it \u2014 so it silently won regardless of screen width or media query. Matched the same compound selector to fix it.' }
+      ]
+    },
     {
       version: '3.5.1',
       date: 'August 2026',
@@ -642,24 +656,26 @@
     subtaskFieldsWrap.appendChild(row);
   }
 
-  function openModal() {
+  function openModal(prefill) {
+    var hasPrefill = prefill && typeof prefill === 'object' && (prefill.title || (prefill.subtasks && prefill.subtasks.length));
     populateCategoryDropdown();
     setDropdownValue(categoryDD, categories[0] || 'Personal', categories[0] || 'Personal');
     setDropdownValue(priorityDD, 'medium', 'Medium');
     categoryNewInput.hidden = true;
     categoryNewInput.value = '';
-    document.getElementById('taskTitle').value = '';
+    document.getElementById('taskTitle').value = hasPrefill && prefill.title ? prefill.title : '';
     document.getElementById('taskNotes').value = '';
     document.getElementById('taskDate').value = todayStr();
     document.getElementById('taskRepeat').checked = false;
     subtaskFieldsWrap.innerHTML = '';
-    addSubtaskFieldRow('');
+    var seedSubtasks = hasPrefill && prefill.subtasks && prefill.subtasks.length ? prefill.subtasks : [''];
+    seedSubtasks.forEach(function (s) { addSubtaskFieldRow(s); });
     openOverlay(modal.closest('.modal-overlay'));
     setTimeout(function () { document.getElementById('taskTitle').focus(); }, 200);
   }
   function closeModal() { closeOverlayEl(modal.closest('.modal-overlay')); closeAllDropdowns(); }
 
-  document.getElementById('addTaskBtn').addEventListener('click', openModal);
+  document.getElementById('addTaskBtn').addEventListener('click', function () { openModal(); });
   modal.closest('.modal-overlay').addEventListener('click', function (e) {
     if (e.target.closest('[data-close-modal]')) closeModal();
   });
@@ -968,6 +984,138 @@
     restoreXlsxInput.value = '';
   });
 
+  // ---------- import a document as a task (bullets/rows/lines become subtasks) ----------
+  var importDocInput = document.getElementById('importDocInput');
+  function triggerImportDoc() { importDocInput.click(); }
+
+  function parseJsonDocument(text, filename) {
+    var data = JSON.parse(text);
+    var title = filename;
+    var bullets = [];
+
+    function stringifyItem(item) {
+      if (typeof item === 'string') return item;
+      if (item && typeof item === 'object') return item.title || item.name || item.text || JSON.stringify(item);
+      return String(item);
+    }
+
+    if (Array.isArray(data)) {
+      bullets = data.map(stringifyItem);
+    } else if (data && typeof data === 'object') {
+      title = data.title || data.name || filename;
+      var arrKey = ['items', 'bullets', 'tasks', 'subtasks', 'points', 'list'].filter(function (k) { return Array.isArray(data[k]); })[0];
+      if (arrKey) {
+        bullets = data[arrKey].map(stringifyItem);
+      } else {
+        Object.keys(data).forEach(function (k) {
+          if (k === 'title' || k === 'name') return;
+          var v = data[k];
+          if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') bullets.push(k + ': ' + v);
+        });
+      }
+    }
+    return { title: title, bullets: bullets.filter(Boolean).slice(0, 60) };
+  }
+
+  function parseExcelDocument(arrayBuffer, filename) {
+    var data = new Uint8Array(arrayBuffer);
+    var wb = XLSX.read(data, { type: 'array' });
+    var sheet = wb.Sheets[wb.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    var bullets = [];
+    rows.forEach(function (row) {
+      row.forEach(function (cell) {
+        var s = String(cell == null ? '' : cell).trim();
+        if (s) bullets.push(s);
+      });
+    });
+    return { title: filename, bullets: bullets.slice(0, 60) };
+  }
+
+  function parseWordDocument(arrayBuffer, filename) {
+    return mammoth.convertToHtml({ arrayBuffer: arrayBuffer }).then(function (result) {
+      var doc = new DOMParser().parseFromString(result.value, 'text/html');
+      var bullets = [];
+      var liEls = doc.querySelectorAll('li');
+      if (liEls.length > 0) {
+        liEls.forEach(function (li) { var t = li.textContent.trim(); if (t) bullets.push(t); });
+      } else {
+        // No real bullet/numbered lists in the doc — fall back to one subtask per paragraph.
+        doc.querySelectorAll('p').forEach(function (p) { var t = p.textContent.trim(); if (t) bullets.push(t); });
+      }
+      return { title: filename, bullets: bullets.filter(Boolean).slice(0, 60) };
+    });
+  }
+
+  var BULLET_LINE_RE = /^[-*\u2022\u2023\u25E6\u2043\u2219]\s*|^\d+[.)]\s*/;
+
+  function parsePdfDocument(arrayBuffer, filename) {
+    if (typeof pdfjsLib === 'undefined') return Promise.reject(new Error('PDF library failed to load \u2014 check your connection and try again.'));
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    return pdfjsLib.getDocument({ data: arrayBuffer }).promise.then(function (pdf) {
+      var pagePromises = [];
+      for (var i = 1; i <= pdf.numPages; i++) {
+        pagePromises.push(pdf.getPage(i).then(function (page) { return page.getTextContent(); }));
+      }
+      return Promise.all(pagePromises);
+    }).then(function (pages) {
+      var lines = [];
+      pages.forEach(function (content) {
+        var lastY = null;
+        var currentLine = '';
+        content.items.forEach(function (item) {
+          var y = item.transform[5];
+          if (lastY !== null && Math.abs(y - lastY) > 2) {
+            if (currentLine.trim()) lines.push(currentLine.trim());
+            currentLine = '';
+          }
+          currentLine += item.str + ' ';
+          lastY = y;
+        });
+        if (currentLine.trim()) lines.push(currentLine.trim());
+      });
+      var bulletLike = lines.filter(function (l) { return BULLET_LINE_RE.test(l.trim()); });
+      var source = bulletLike.length >= 2 ? bulletLike : lines;
+      var bullets = source.map(function (l) { return l.replace(BULLET_LINE_RE, '').trim(); });
+      return { title: filename, bullets: bullets.filter(Boolean).slice(0, 60) };
+    });
+  }
+
+  importDocInput.addEventListener('change', function () {
+    var file = importDocInput.files[0];
+    if (!file) return;
+    var baseName = file.name.replace(/\.[^.]+$/, '');
+    var ext = file.name.split('.').pop().toLowerCase();
+
+    function finish(result) {
+      openModal({ title: (result && result.title) || baseName, subtasks: (result && result.bullets) || [] });
+      var count = result && result.bullets ? result.bullets.length : 0;
+      showToast('Imported \u201c' + file.name + '\u201d as a draft task with ' + count + ' subtask' + (count === 1 ? '' : 's') + ' \u2014 review it, then tap Add task.');
+    }
+    function fail(err) {
+      showToast('Could not read that file: ' + (err && err.message ? err.message : 'unknown error'));
+    }
+
+    if (ext === 'json') {
+      file.text().then(function (text) { finish(parseJsonDocument(text, baseName)); }).catch(fail);
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      if (typeof XLSX === 'undefined') { fail(new Error('Excel library failed to load \u2014 check your connection.')); }
+      else file.arrayBuffer().then(function (buf) { finish(parseExcelDocument(buf, baseName)); }).catch(fail);
+    } else if (ext === 'docx') {
+      if (typeof mammoth === 'undefined') { fail(new Error('Word library failed to load \u2014 check your connection.')); }
+      else file.arrayBuffer().then(function (buf) { return parseWordDocument(buf, baseName); }).then(finish).catch(fail);
+    } else if (ext === 'doc') {
+      fail(new Error('Only the newer .docx format is supported, not the older .doc format \u2014 try saving it as .docx first.'));
+    } else if (ext === 'pdf') {
+      if (typeof pdfjsLib === 'undefined') { fail(new Error('PDF library failed to load \u2014 check your connection.')); }
+      else file.arrayBuffer().then(function (buf) { return parsePdfDocument(buf, baseName); }).then(finish).catch(fail);
+    } else {
+      fail(new Error('Unsupported file type.'));
+    }
+    importDocInput.value = '';
+  });
+
   exportMenu.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-action]');
     if (!btn) return;
@@ -980,6 +1128,7 @@
     else if (action === 'restore-json') restoreJson();
     else if (action === 'restore-xlsx') restoreXlsx();
     else if (action === 'notify') toggleNotifications();
+    else if (action === 'import-doc') triggerImportDoc();
   });
 
   // ---------- Momentum Coach (local, rule-based — no external calls) ----------

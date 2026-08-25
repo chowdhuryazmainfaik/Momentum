@@ -2,6 +2,14 @@
 
 All notable changes to Momentum are documented here.
 
+## v3.6.0
+
+- Import a PDF, Word (.docx), Excel, or JSON file as a new task — the document becomes one task, and its bullet points (or list items, spreadsheet cells, or JSON array entries) become subtasks. Opens as a pre-filled draft in the New Task form so you can review and edit before saving anything.
+
+## v3.5.2
+
+- Fixed the hamburger ("more") menu button showing on every screen size instead of only on mobile — a CSS specificity collision with .glass-btn.round was silently overriding the rule meant to hide it.
+
 ## v3.5.1
 
 - The theme toggle inside the mobile "more" menu had no text label, leaving a blank-looking row. It now shows "Light Mode" while in dark mode, and "Dark Mode" while in light mode — labeled by what tapping it switches you to.

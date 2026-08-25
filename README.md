@@ -1,6 +1,6 @@
 # Momentum — Focus. Plan. Achieve.
 
-**Version 3.5.1** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
+**Version 3.6.0** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
 
 ## Run it
 
@@ -34,6 +34,7 @@ CHANGELOG.md       Version history
 - Dark/light mode (remembers your choice), with a logo that swaps to match
 - Export tasks + subtasks to **Excel (.xlsx)**, **Word (.doc)**, or **PDF** (uses free CDN libraries — no install needed, just an internet connection when you export). Word and PDF exports include the Momentum logo; the Excel export gets a bold brand header line instead, since the free spreadsheet library used here can't embed real images into .xlsx files.
 - **Backup / Restore** as JSON or Excel, to carry your tasks between devices — download a backup on one device, restore it on the other. (Excel restore doesn't preserve task notes — use JSON for full-fidelity backups.)
+- **Import a document as a task** — upload a PDF, Word (.docx), Excel, or JSON file and it becomes a draft task with the document's bullet points, list items, spreadsheet cells, or JSON array entries turned into subtasks. Opens in the New Task form for you to review/edit before saving.
 - **Momentum Coach** — a panel with a few observations about your current tasks (overdue items, streaks, stale high-priority tasks, etc.), computed entirely from your local data. No account, no external API calls.
 - **What's New** — see what changed in the current version any time; it also opens automatically once after an update.
 - **Install as an app** — a dedicated "Install App" button appears in the header whenever the app is installable (Chrome/Edge/Android support one-tap install; iOS Safari needs the manual "Add to Home Screen" step, which the button will tell you). It disappears automatically once installed or when already running as the installed app.
@@ -57,6 +58,7 @@ This means the icon was installed **before** the v3.4.1 fix, back when the manif
 ## Notes
 
 - Export relies on three small libraries loaded from a CDN (`cdnjs.cloudflare.com`) — that's the only time the app needs internet access; everything else works fully offline once loaded.
+- Document import relies on two more CDN libraries (`mammoth` for Word, `pdf.js` for PDF) — same CDN, same one-time-per-load cost. Only the newer `.docx` format is supported for Word, not the older binary `.doc` format. Bullet detection is heuristic: real bulleted/numbered lists in a Word doc or PDF are detected reliably; plain paragraphs fall back to "one subtask per paragraph/line," which can be noisy for prose-heavy documents — that's exactly why the import opens as an editable draft instead of saving immediately.
 - The install prompt and logo fetch for exports both require the site to be served over `http(s)` (e.g. via Vercel, GitHub Pages, or a local dev server) — opening `index.html` directly from disk (`file://`) still works for everyday use, but the browser blocks service worker registration and same-origin `fetch()` under `file://`, so the install option and the exported logo will silently be unavailable in that mode.
 - To change branding, replace `assets/logo-icon-light.png` (light mode) and `assets/logo-icon-dark.png` (dark mode). The background is defined entirely in CSS (see the `.blob` rules in `css/style.css`) — no image files involved, so you can retint it there directly.
 - Deleting a daily-repeating task removes the whole recurring series (not just that day's copy) — the app asks you to confirm before doing this.

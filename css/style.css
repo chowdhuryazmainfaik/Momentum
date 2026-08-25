@@ -210,12 +210,17 @@ html.dark .brand .logo-dark{ display:block; }
    On wider screens the panel is display:contents, so its buttons just render inline as
    normal, and the hot-dog trigger itself stays hidden. */
 .more-menu-wrap{ position:relative; }
-.more-menu-btn{ display:none; }
+/* Specificity note: this button also carries .glass-btn.round, which unconditionally sets
+   display:inline-flex at specificity (0,2,0) — higher than a plain .more-menu-btn rule
+   (0,1,0), so it would silently win regardless of media query or source order and show the
+   hamburger icon on every screen size. Matching that compound selector here (and in the
+   media query below) is what actually lets these rules take effect. */
+.glass-btn.round.more-menu-btn{ display:none; }
 .more-menu-panel{ display:contents; }
 .more-menu-label{ display:none; }
 
 @media (max-width:640px){
-  .more-menu-btn{ display:inline-flex; }
+  .glass-btn.round.more-menu-btn{ display:inline-flex; }
   .more-menu-panel[hidden]{ display:none; }
   .more-menu-panel:not([hidden]){
     display:flex; flex-direction:column; gap:6px; align-items:stretch;
