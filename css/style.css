@@ -298,8 +298,13 @@ html.dark .tab:not(.active):hover{ background:rgba(255,255,255,.08); }
 .task-title{ font-weight:500; margin:0; word-break:break-word; }
 .task-title.done{ text-decoration: line-through; opacity:.5; }
 .task-notes{ font-size:13px; color:var(--text-soft); margin:4px 0 0; }
-.icon-btn{ background:none; border:none; cursor:pointer; color:var(--text-faint); flex-shrink:0; padding:2px; }
-.icon-btn:hover{ color:#f87171; }
+.icon-btn{ background:none; border:none; cursor:pointer; color:var(--text-faint); flex-shrink:0; padding:6px; border-radius:8px; transition: color .15s ease, transform .15s cubic-bezier(.34,1.56,.64,1); }
+.icon-btn:hover{ color:#3FA0FF; }
+.icon-btn:active{ transform: scale(.88); }
+.icon-btn[data-delete-task]:hover, .icon-btn[data-delete-subtask]:hover{ color:#f87171; }
+.icon-btn.pin-btn.active{ color:#FF3FA8; }
+.task-actions{ display:flex; align-items:center; gap:0; flex-shrink:0; margin:-6px -6px 0 0; }
+.task-top .task-title{ min-width:0; flex:1; }
 
 .badge-row{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:8px; }
 .badge{ font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid; font-weight:500; text-transform:capitalize; }
@@ -311,7 +316,7 @@ html.dark .badge.priority-medium{ color:#7de3fb; }
 html.dark .badge.priority-low{ color:#b1e79f; }
 .badge.category{ border-color: rgba(100,116,139,.3); color:var(--text-soft); }
 .badge.repeat{ border-color: rgba(255,63,168,.4); color:#FF3FA8; display:inline-flex; align-items:center; gap:4px; }
-html.dark .badge.repeat{ color:#c4a6f5; }
+html.dark .badge.repeat{ color:#ff8fc8; }
 .badge.subtoggle{ border-color: rgba(100,116,139,.3); color:var(--text-soft); display:inline-flex; align-items:center; gap:4px; cursor:pointer; background:none; font-family:inherit; }
 .badge.subtoggle svg{ transition: transform .15s ease; }
 .badge.subtoggle.expanded svg{ transform: rotate(180deg); }
@@ -474,3 +479,47 @@ html.dark .coach-tip{ background: rgba(255,255,255,.06); border:1px solid rgba(2
 .whats-new-version li{ font-size:13.5px; line-height:1.5; color:var(--text-soft); }
 .whats-new-version li.fix::marker{ color:#22C6EE; }
 .whats-new-version li.feat::marker{ color:#FF8A3D; }
+
+/* The `hidden` attribute is only a browser default, so any element that sets its own `display`
+   (like .glass-btn.pill) silently ignores it. This makes `hidden` always win — except on the
+   mobile menu panel, which deliberately uses display:contents on wide screens. */
+[hidden]:not(.more-menu-panel){ display:none !important; }
+
+/* Pinned tasks */
+.glass.task-card.is-pinned{
+  border-color: rgba(255,63,168,.5);
+  box-shadow: 0 20px 50px rgba(255,63,168,.14), 0 0 0 1px rgba(255,63,168,.16), inset 0 1px 1px rgba(255,255,255,.8);
+}
+.badge.pinned-badge{ border-color: rgba(255,63,168,.45); color:#d81b84; background: rgba(255,63,168,.12); display:inline-flex; align-items:center; gap:4px; }
+html.dark .badge.pinned-badge{ color:#ff8fc8; }
+
+/* Progress bar (share dialog + shared-task view) */
+.progress-track{ height:10px; border-radius:999px; background: rgba(0,0,0,.1); overflow:hidden; }
+html.dark .progress-track{ background: rgba(255,255,255,.12); }
+.progress-fill{ height:100%; width:0; border-radius:999px; background: linear-gradient(90deg,#FF3FA8,#22C6EE); transition: width .5s ease; }
+.progress-text{ font-size:12.5px; color:var(--text-soft); margin:6px 0 0; }
+
+/* Share dialog */
+.share-task-title{ font-weight:600; font-size:16px; margin:0 0 12px; word-break:break-word; }
+.share-link-input{
+  width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.6);
+  background: rgba(255,255,255,.5); color:var(--text); font-size:12.5px; font-family:inherit; outline:none;
+}
+html.dark .share-link-input{ background: rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); }
+.share-link-input:focus{ box-shadow:0 0 0 2px rgba(34,198,238,.6); }
+.share-actions{ display:flex; gap:10px; align-items:center; margin-top:10px; }
+.share-actions .primary-btn{ margin-top:0; flex:1; }
+
+/* Shared-task view */
+.shared-title{ font-size:18px; margin:0; word-break:break-word; }
+.shared-title.done{ text-decoration:line-through; opacity:.6; }
+.shared-subs{ list-style:none; margin:14px 0 0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.shared-sub{ display:flex; align-items:flex-start; gap:10px; font-size:14px; word-break:break-word; }
+.shared-sub.is-done span:last-child{ text-decoration:line-through; opacity:.55; }
+.shared-check{
+  width:20px; height:20px; border-radius:999px; flex-shrink:0; border:2px solid rgba(60,60,80,.35);
+  display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff;
+}
+html.dark .shared-check{ border-color: rgba(255,255,255,.45); }
+.shared-sub.is-done .shared-check{ background: linear-gradient(135deg,#22C6EE,#FF3FA8); border-color:transparent; }
+#sharedCopyBtn{ margin-top:18px; }

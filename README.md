@@ -1,6 +1,6 @@
 # Momentum — Focus. Plan. Achieve.
 
-**Version 3.6.0** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
+**Version 3.7.0** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
 
 ## Run it
 
@@ -34,6 +34,9 @@ CHANGELOG.md       Version history
 - Dark/light mode (remembers your choice), with a logo that swaps to match
 - Export tasks + subtasks to **Excel (.xlsx)**, **Word (.doc)**, or **PDF** (uses free CDN libraries — no install needed, just an internet connection when you export). Word and PDF exports include the Momentum logo; the Excel export gets a bold brand header line instead, since the free spreadsheet library used here can't embed real images into .xlsx files.
 - **Backup / Restore** as JSON or Excel, to carry your tasks between devices — download a backup on one device, restore it on the other. (Excel restore doesn't preserve task notes — use JSON for full-fidelity backups.)
+- **Pin a task** — pinned tasks reappear fresh at the top of your list every day (each day gets its own copy, so streaks and history still work). Unpin or delete to stop; deleting a pinned task removes the whole series.
+- **Edit a task** — the pencil icon opens the same form used to add tasks, pre-filled. Subtask ids and checked states are preserved, so editing never loses progress.
+- **Share a task** — creates a link with the task and its progress stored in the URL's `#` part (never sent to any server). Whoever opens it sees a read-only view and can save a copy. It is a *snapshot*: this app has no backend, so a link can't update live — share a fresh one after making progress. Tasks with very many subtasks make long links that some chat apps may truncate.
 - **Import a document as a task** — upload a PDF, Word (.docx), Excel, or JSON file and it becomes a draft task with the document's bullet points, list items, spreadsheet cells, or JSON array entries turned into subtasks. Opens in the New Task form for you to review/edit before saving.
 - **Momentum Coach** — a panel with a few observations about your current tasks (overdue items, streaks, stale high-priority tasks, etc.), computed entirely from your local data. No account, no external API calls.
 - **What's New** — see what changed in the current version any time; it also opens automatically once after an update.

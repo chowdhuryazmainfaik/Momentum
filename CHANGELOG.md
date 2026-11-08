@@ -2,6 +2,15 @@
 
 All notable changes to Momentum are documented here.
 
+## v3.7.0
+
+- Pin a task: tap the pin icon (or tick "Pin to the top, every day" in the form). A pinned task comes back fresh at the top of your list every day until you unpin or delete it.
+- Edit any task: the pencil icon opens the full form — title, notes, date, priority, category, repeat, pin, and subtasks. Already-checked subtasks stay checked.
+- Share a task: the share icon makes a link showing the task and its progress; the recipient can save a copy. The link is a snapshot, not live.
+- Security fix: quote characters in text could escape an HTML attribute and run script (subtasks/categories from imports or shared links). Escaping is now correct everywhere.
+- The Install App button now really hides when installed or not installable (a CSS rule was overriding `hidden`).
+- Fixed a raw `\u2019` code showing in the import note, and the last purple colour (dark-mode "Daily" badge).
+
 ## v3.6.0
 
 - Import a PDF, Word (.docx), Excel, or JSON file as a new task — the document becomes one task, and its bullet points (or list items, spreadsheet cells, or JSON array entries) become subtasks. Opens as a pre-filled draft in the New Task form so you can review and edit before saving anything.

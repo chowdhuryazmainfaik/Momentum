@@ -3,7 +3,7 @@
 
   var APP_NAME = 'Momentum';
   var APP_TAGLINE = 'Focus. Plan. Achieve.';
-  var APP_VERSION = '3.6.0';
+  var APP_VERSION = '3.7.0';
 
   var TASKS_KEY = 'momentum.tasks.v1';
   var CATEGORIES_KEY = 'momentum.categories.v1';
@@ -12,6 +12,18 @@
   var DEFAULT_CATEGORIES = ['Personal', 'Work', 'Health', 'Learning'];
 
   var CHANGELOG = [
+    {
+      version: '3.7.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'Pin a task: tap the pin icon on any task (or tick "Pin to the top, every day" in the form). A pinned task comes back fresh at the top of your list every day until you unpin or delete it.' },
+        { type: 'feat', text: 'Edit any task: the pencil icon opens the full form \u2014 title, notes, date, priority, category, repeat, pin, and subtasks (add, rename, remove). Subtasks you\u2019ve already checked off stay checked.' },
+        { type: 'feat', text: 'Share a task: the share icon makes a link that shows the task and its progress to whoever opens it, and they can save their own copy. The link is a snapshot of right now \u2014 it doesn\u2019t update live \u2014 so share a new link after you make more progress.' },
+        { type: 'fix', text: 'Security: text containing quote characters could break out of an HTML attribute and run script (e.g. a subtask or category from an imported file or a shared link). All user, imported and shared text is now escaped properly.' },
+        { type: 'fix', text: 'The Install App button now actually hides when the app is already installed or can\u2019t be installed (a CSS rule was silently overriding the hidden state).' },
+        { type: 'fix', text: 'The note under "Import PDF, Word, Excel, or JSON" showed a raw \\u2019 code instead of an apostrophe; and the dark-mode "Daily" badge was still purple.' }
+      ]
+    },
     {
       version: '3.6.0',
       date: 'August 2026',
@@ -237,14 +249,16 @@
   });
 
   // ---------- recurring task carry-over ----------
-  // Each daily-repeating task shares a seriesId across its daily copies. Carry-over only
-  // regenerates a copy for today from the most recent existing copy of a series — so once
-  // every copy of a series is deleted, the series is gone for good and won't come back.
+  // Each daily-repeating OR pinned task shares a seriesId across its daily copies. Carry-over
+  // looks at the most recent copy of every series and, if that copy is still repeating or
+  // pinned, regenerates a fresh copy for today. Looking at the latest copy (rather than any
+  // copy) matters: once someone unpins/stops a series, its latest copy stops qualifying, so
+  // older pinned copies can't bring it back.
   function carryOverRecurringTasks() {
     var today = todayStr();
     var latestBySeries = {};
     tasks.forEach(function (t) {
-      if (!t.repeatDaily || !t.seriesId) return;
+      if (!t.seriesId) return;
       var cur = latestBySeries[t.seriesId];
       if (!cur || t.date > cur.date) latestBySeries[t.seriesId] = t;
     });
@@ -252,6 +266,7 @@
     var carried = [];
     Object.keys(latestBySeries).forEach(function (seriesId) {
       var latest = latestBySeries[seriesId];
+      if (!(latest.repeatDaily || latest.pinned)) return;
       if (latest.date < today) {
         carried.push({
           id: uid(),
@@ -261,7 +276,8 @@
           category: latest.category,
           priority: latest.priority,
           date: today,
-          repeatDaily: true,
+          repeatDaily: !!latest.repeatDaily,
+          pinned: !!latest.pinned,
           done: false,
           subtasks: latest.subtasks.map(function (s) { return { id: uid(), title: s.title, done: false }; }),
           createdAt: new Date().toISOString()
@@ -276,15 +292,17 @@
 
   // ---------- task CRUD ----------
   function addTask(input) {
+    var needsSeries = input.repeatDaily || input.pinned;
     var task = {
       id: uid(),
-      seriesId: input.repeatDaily ? uid() : null,
+      seriesId: needsSeries ? uid() : null,
       title: input.title.trim(),
       notes: input.notes ? input.notes.trim() : undefined,
       category: input.category,
       priority: input.priority,
       date: input.date,
-      repeatDaily: input.repeatDaily,
+      repeatDaily: !!input.repeatDaily,
+      pinned: !!input.pinned,
       done: false,
       subtasks: input.subtasks.filter(function (s) { return s.trim().length > 0; }).map(function (s) {
         return { id: uid(), title: s.trim(), done: false };
@@ -300,10 +318,78 @@
     renderAll();
   }
 
+  // Sets pinned on a task and every other copy in its series (so the whole series agrees),
+  // assigning a series id first if the task never had one. Doesn't persist/render itself.
+  function applyPinned(taskId, pinned) {
+    var task = tasks.filter(function (t) { return t.id === taskId; })[0];
+    if (!task) return;
+    var sid = task.seriesId || (pinned ? uid() : null);
+    tasks = tasks.map(function (t) {
+      var inSeries = t.id === taskId || (task.seriesId && t.seriesId === task.seriesId);
+      if (!inSeries) return t;
+      return Object.assign({}, t, { pinned: pinned, seriesId: t.seriesId || sid });
+    });
+  }
+
+  function togglePin(id) {
+    var task = tasks.filter(function (t) { return t.id === id; })[0];
+    if (!task) return;
+    var makePinned = !task.pinned;
+    applyPinned(id, makePinned);
+    carryOverRecurringTasks();
+    persistTasks();
+    renderAll();
+    showToast(makePinned
+      ? 'Pinned \u2014 this task will sit at the top of your list every day.'
+      : 'Unpinned.');
+  }
+
+  // Applies the edit form's values to an existing task, keeping each existing subtask's id
+  // and done-state (matched by the id stored on its form row) so editing never loses progress.
+  function saveTaskEdits(id, input) {
+    var prev = tasks.filter(function (t) { return t.id === id; })[0];
+    if (!prev) return;
+
+    var subtasks = input.subtasks.map(function (s) {
+      return { id: s.id || uid(), title: s.title, done: !!s.done };
+    });
+    var seriesId = prev.seriesId;
+    if ((input.repeatDaily || input.pinned) && !seriesId) seriesId = uid();
+
+    // A finished task that just gained an unchecked subtask isn't finished any more.
+    var done = prev.done;
+    if (done && subtasks.some(function (s) { return !s.done; })) done = false;
+
+    tasks = tasks.map(function (t) {
+      if (t.id !== id) return t;
+      return Object.assign({}, t, {
+        title: input.title.trim(),
+        notes: input.notes ? input.notes.trim() : undefined,
+        category: input.category,
+        priority: input.priority,
+        date: input.date,
+        repeatDaily: !!input.repeatDaily,
+        pinned: !!input.pinned,
+        seriesId: seriesId,
+        subtasks: subtasks,
+        done: done,
+        completedAt: done ? t.completedAt : undefined
+      });
+    });
+    if (!!prev.pinned !== !!input.pinned) applyPinned(id, !!input.pinned);
+    if (categories.indexOf(input.category) === -1) {
+      categories.push(input.category);
+      persistCategories();
+    }
+    carryOverRecurringTasks();
+    persistTasks();
+    renderAll();
+  }
+
   function deleteTask(id) {
     var task = tasks.filter(function (t) { return t.id === id; })[0];
-    if (task && task.repeatDaily && task.seriesId) {
-      // Deleting a daily-repeating task stops the whole series — otherwise it would
+    if (task && (task.repeatDaily || task.pinned) && task.seriesId) {
+      // Deleting a daily-repeating or pinned task stops the whole series — otherwise it would
       // simply be regenerated again on the next reload.
       tasks = tasks.filter(function (t) { return t.seriesId !== task.seriesId; });
     } else {
@@ -400,10 +486,14 @@
     return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
+  // Safe for both text content AND attribute values (quotes are escaped too).
   function escapeHtml(str) {
-    var div = document.createElement('div');
-    div.textContent = str == null ? '' : str;
-    return div.innerHTML;
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function renderStats() {
@@ -430,8 +520,13 @@
     else list = tasks.slice();
 
     var order = { high: 0, medium: 1, low: 2 };
+    // "Live" pinned = today's copy of a pinned task. Those go to the very top of any view;
+    // older copies of the same pinned series are just history and sort by date like anything else.
+    function livePinned(t) { return !!t.pinned && t.date === today; }
     return list.sort(function (a, b) {
+      if (livePinned(a) !== livePinned(b)) return livePinned(a) ? -1 : 1;
       if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
       if (a.done !== b.done) return a.done ? 1 : -1;
       return order[a.priority] - order[b.priority];
     });
@@ -445,17 +540,21 @@
   };
 
   function taskCardHtml(task, today, showDateHeading) {
+    var tid = escapeHtml(task.id);
     var subtaskDone = task.subtasks.filter(function (s) { return s.done; }).length;
     var expanded = !!expandedTaskIds[task.id];
 
     var badges = ''
       + '<span class="badge priority-' + task.priority + '">' + task.priority + '</span>'
       + '<span class="badge category">' + escapeHtml(task.category) + '</span>';
+    if (task.pinned) {
+      badges += '<span class="badge pinned-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/><path d="M12 14v7" fill="none" stroke-linecap="round"/></svg>Pinned</span>';
+    }
     if (task.repeatDaily) {
       badges += '<span class="badge repeat"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>Daily</span>';
     }
     if (task.subtasks.length > 0) {
-      badges += '<button type="button" class="badge subtoggle' + (expanded ? ' expanded' : '') + '" data-toggle-expand="' + task.id + '">'
+      badges += '<button type="button" class="badge subtoggle' + (expanded ? ' expanded' : '') + '" data-toggle-expand="' + tid + '">'
         + subtaskDone + '/' + task.subtasks.length + ' subtasks'
         + '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg></button>';
     }
@@ -464,13 +563,14 @@
     if (expanded) {
       subtaskHtml += '<div class="subtask-list">';
       task.subtasks.forEach(function (s) {
+        var sid = escapeHtml(s.id);
         subtaskHtml += '<div class="subtask-row">'
-          + '<input type="checkbox" class="momentum-check small" ' + (s.done ? 'checked' : '') + ' data-toggle-subtask="' + task.id + '::' + s.id + '" />'
+          + '<input type="checkbox" class="momentum-check small" ' + (s.done ? 'checked' : '') + ' data-toggle-subtask="' + tid + '::' + sid + '" />'
           + '<span class="' + (s.done ? 'done' : '') + '">' + escapeHtml(s.title) + '</span>'
-          + '<button type="button" class="icon-btn" data-delete-subtask="' + task.id + '::' + s.id + '"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg></button>'
+          + '<button type="button" class="icon-btn" data-delete-subtask="' + tid + '::' + sid + '"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg></button>'
           + '</div>';
       });
-      subtaskHtml += '<form class="subtask-field-row" data-add-subtask="' + task.id + '" style="padding-left:4px;">'
+      subtaskHtml += '<form class="subtask-field-row" data-add-subtask="' + tid + '" style="padding-left:4px;">'
         + '<input type="text" placeholder="Add a subtask…" />'
         + '</form>';
       subtaskHtml += '</div>';
@@ -478,12 +578,18 @@
 
     var heading = showDateHeading ? '<p class="date-heading">' + formatDate(task.date, today) + '</p>' : '';
 
-    return heading + '<div class="glass task-card">'
-      + '<input type="checkbox" class="momentum-check" ' + (task.done ? 'checked' : '') + ' data-toggle-done="' + task.id + '" style="margin-top:2px;" />'
+    var pinLabel = task.pinned ? 'Unpin task' : 'Pin task to the top every day';
+    return heading + '<div class="glass task-card' + (task.pinned ? ' is-pinned' : '') + '">'
+      + '<input type="checkbox" class="momentum-check" ' + (task.done ? 'checked' : '') + ' data-toggle-done="' + tid + '" style="margin-top:2px;" />'
       + '<div class="task-body">'
       + '<div class="task-top">'
       + '<p class="task-title' + (task.done ? ' done' : '') + '">' + escapeHtml(task.title) + '</p>'
-      + '<button type="button" class="icon-btn" data-delete-task="' + task.id + '" aria-label="Delete task"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/></svg></button>'
+      + '<div class="task-actions">'
+      + '<button type="button" class="icon-btn pin-btn' + (task.pinned ? ' active' : '') + '" data-pin-task="' + tid + '" aria-label="' + pinLabel + '" title="' + pinLabel + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="' + (task.pinned ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/><path d="M12 14v7"/></svg></button>'
+      + '<button type="button" class="icon-btn" data-share-task="' + tid + '" aria-label="Share task" title="Share task"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="m16 6-4-4-4 4M12 2v14"/></svg></button>'
+      + '<button type="button" class="icon-btn" data-edit-task="' + tid + '" aria-label="Edit task" title="Edit task"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>'
+      + '<button type="button" class="icon-btn" data-delete-task="' + tid + '" aria-label="Delete task" title="Delete task"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/></svg></button>'
+      + '</div>'
       + '</div>'
       + (task.notes ? '<p class="task-notes">' + escapeHtml(task.notes) + '</p>' : '')
       + '<div class="badge-row">' + badges + '</div>'
@@ -522,13 +628,20 @@
     } else if ((t = e.target.closest('[data-delete-task]'))) {
       var taskId = t.getAttribute('data-delete-task');
       var task = tasks.filter(function (x) { return x.id === taskId; })[0];
-      if (task && task.repeatDaily) {
-        if (confirm('This is a daily-repeating task. Deleting it will stop the whole series, not just today\u2019s copy. Continue?')) {
+      if (task && (task.repeatDaily || task.pinned)) {
+        var what = task.pinned ? 'pinned' : 'daily-repeating';
+        if (confirm('This is a ' + what + ' task. Deleting it will stop the whole series (it won\u2019t come back tomorrow), not just today\u2019s copy. Continue?')) {
           deleteTask(taskId);
         }
       } else {
         deleteTask(taskId);
       }
+    } else if ((t = e.target.closest('[data-pin-task]'))) {
+      togglePin(t.getAttribute('data-pin-task'));
+    } else if ((t = e.target.closest('[data-share-task]'))) {
+      openShareModal(t.getAttribute('data-share-task'));
+    } else if ((t = e.target.closest('[data-edit-task]'))) {
+      openEditTask(t.getAttribute('data-edit-task'));
     } else if ((t = e.target.closest('[data-delete-subtask]'))) {
       var parts = t.getAttribute('data-delete-subtask').split('::');
       deleteSubtask(parts[0], parts[1]);
@@ -644,34 +757,81 @@
     }).join('') + '<button type="button" class="dd-option" data-value="__new__">+ New category…</button>';
   }
 
-  function addSubtaskFieldRow(value) {
+  // meta (optional): { id, done } — set when editing an existing subtask so saving can keep
+  // its identity and checked state instead of recreating it as a fresh unchecked one.
+  function addSubtaskFieldRow(value, meta) {
     var row = document.createElement('div');
     row.className = 'subtask-field-row';
-    row.innerHTML = '<input type="text" placeholder="Subtask" value="' + escapeHtml(value || '') + '" />'
+    if (meta && meta.id) row.setAttribute('data-sub-id', meta.id);
+    row.setAttribute('data-done', meta && meta.done ? '1' : '0');
+    row.innerHTML = '<input type="text" placeholder="Subtask" />'
       + '<button type="button" aria-label="Remove subtask"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg></button>';
+    row.querySelector('input').value = value || '';
     row.querySelector('button').addEventListener('click', function () {
       if (subtaskFieldsWrap.children.length > 1) row.remove();
-      else row.querySelector('input').value = '';
+      else {
+        row.querySelector('input').value = '';
+        row.removeAttribute('data-sub-id');
+      }
     });
     subtaskFieldsWrap.appendChild(row);
   }
 
+  var editingTaskId = null;
+
+  // prefill (optional): { title, notes, category, priority, date, repeat, pinned,
+  //   subtasks: [string | {title,id,done}], editId }. With editId the form saves changes to
+  //   that task instead of creating a new one.
   function openModal(prefill) {
-    var hasPrefill = prefill && typeof prefill === 'object' && (prefill.title || (prefill.subtasks && prefill.subtasks.length));
+    var p = prefill && typeof prefill === 'object' ? prefill : {};
+    editingTaskId = p.editId || null;
+
+    if (p.category && editingTaskId && categories.indexOf(p.category) === -1) {
+      categories.push(p.category);
+      persistCategories();
+    }
     populateCategoryDropdown();
-    setDropdownValue(categoryDD, categories[0] || 'Personal', categories[0] || 'Personal');
-    setDropdownValue(priorityDD, 'medium', 'Medium');
+    var catValue = p.category && categories.indexOf(p.category) !== -1 ? p.category : (categories[0] || 'Personal');
+    setDropdownValue(categoryDD, catValue, catValue);
+
+    var pri = ['low', 'medium', 'high'].indexOf(p.priority) !== -1 ? p.priority : 'medium';
+    setDropdownValue(priorityDD, pri, pri.charAt(0).toUpperCase() + pri.slice(1));
+
     categoryNewInput.hidden = true;
     categoryNewInput.value = '';
-    document.getElementById('taskTitle').value = hasPrefill && prefill.title ? prefill.title : '';
-    document.getElementById('taskNotes').value = '';
-    document.getElementById('taskDate').value = todayStr();
-    document.getElementById('taskRepeat').checked = false;
+    document.getElementById('taskTitle').value = p.title || '';
+    document.getElementById('taskNotes').value = p.notes || '';
+    document.getElementById('taskDate').value = p.date || todayStr();
+    document.getElementById('taskRepeat').checked = !!p.repeat;
+    document.getElementById('taskPinned').checked = !!p.pinned;
+
+    document.getElementById('modalHeading').textContent = editingTaskId ? 'Edit task' : 'New task';
+    document.getElementById('taskSubmitBtn').textContent = editingTaskId ? 'Save changes' : 'Add task';
+
     subtaskFieldsWrap.innerHTML = '';
-    var seedSubtasks = hasPrefill && prefill.subtasks && prefill.subtasks.length ? prefill.subtasks : [''];
-    seedSubtasks.forEach(function (s) { addSubtaskFieldRow(s); });
+    var seeds = p.subtasks && p.subtasks.length ? p.subtasks : [''];
+    seeds.forEach(function (s) {
+      if (typeof s === 'string') addSubtaskFieldRow(s);
+      else addSubtaskFieldRow(s.title, { id: s.id, done: s.done });
+    });
     openOverlay(modal.closest('.modal-overlay'));
     setTimeout(function () { document.getElementById('taskTitle').focus(); }, 200);
+  }
+
+  function openEditTask(id) {
+    var task = tasks.filter(function (t) { return t.id === id; })[0];
+    if (!task) return;
+    openModal({
+      editId: task.id,
+      title: task.title,
+      notes: task.notes,
+      category: task.category,
+      priority: task.priority,
+      date: task.date,
+      repeat: task.repeatDaily,
+      pinned: task.pinned,
+      subtasks: task.subtasks.map(function (s) { return { title: s.title, id: s.id, done: s.done }; })
+    });
   }
   function closeModal() { closeOverlayEl(modal.closest('.modal-overlay')); closeAllDropdowns(); }
 
@@ -698,17 +858,32 @@
     var category = categoryValue === '__new__'
       ? (categoryNewInput.value.trim() || 'General')
       : categoryValue;
-    var subtaskValues = Array.prototype.map.call(subtaskFieldsWrap.querySelectorAll('input'), function (i) { return i.value; });
 
-    addTask({
+    var subtaskObjs = [];
+    Array.prototype.forEach.call(subtaskFieldsWrap.querySelectorAll('.subtask-field-row'), function (row) {
+      var v = row.querySelector('input').value.trim();
+      if (!v) return;
+      subtaskObjs.push({ title: v, id: row.getAttribute('data-sub-id') || null, done: row.getAttribute('data-done') === '1' });
+    });
+
+    var common = {
       title: title,
       notes: document.getElementById('taskNotes').value,
       category: category,
       priority: priorityDD.getAttribute('data-value'),
       date: document.getElementById('taskDate').value || todayStr(),
       repeatDaily: document.getElementById('taskRepeat').checked,
-      subtasks: subtaskValues
-    });
+      pinned: document.getElementById('taskPinned').checked
+    };
+
+    if (editingTaskId) {
+      common.subtasks = subtaskObjs;
+      saveTaskEdits(editingTaskId, common);
+      showToast('Task updated.');
+    } else {
+      common.subtasks = subtaskObjs.map(function (s) { return s.title; });
+      addTask(common);
+    }
     closeModal();
   });
 
@@ -1150,7 +1325,7 @@
       tips.push('\uD83D\uDD25 You\u2019re on a ' + stats.streak + '-day streak — that kind of consistency compounds. Keep it going.');
     }
 
-    var overdue = tasks.filter(function (t) { return !t.done && t.date < today && !t.repeatDaily; });
+    var overdue = tasks.filter(function (t) { return !t.done && t.date < today && !t.repeatDaily && !t.pinned; });
     if (overdue.length > 0) {
       tips.push('You have ' + overdue.length + ' task' + (overdue.length === 1 ? '' : 's') + ' from previous days still open. Worth clearing them out or moving the date so they don\u2019t pile up.');
     }
@@ -1419,6 +1594,209 @@
     _notifyTimer = setInterval(function () { checkPriorityNotifications(false); }, 60 * 60 * 1000); // hourly, while the tab stays open
   }
 
+  // ---------- sharing a task (snapshot link — no backend involved) ----------
+  // The link carries the task + its progress inside the URL's #fragment, which browsers never
+  // send to a server. Whoever opens it sees a read-only view of the task *as it was when the
+  // link was made*; it doesn't update live, because there's nowhere to store live data.
+  function toBase64Url(str) {
+    var bytes = new TextEncoder().encode(str);
+    var bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function fromBase64Url(b64) {
+    b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  function progressOf(doneCount, total, taskDone) {
+    if (taskDone) return 100;
+    return total ? Math.round((doneCount / total) * 100) : 0;
+  }
+
+  function buildShareLink(task) {
+    var payload = {
+      v: 1,
+      n: task.title,
+      o: task.notes || '',
+      c: task.category,
+      p: task.priority,
+      d: task.date,
+      x: task.done ? 1 : 0,
+      s: task.subtasks.map(function (s) { return [s.title, s.done ? 1 : 0]; }),
+      t: new Date().toISOString()
+    };
+    return location.href.split('#')[0] + '#share=' + toBase64Url(JSON.stringify(payload));
+  }
+
+  // Everything in a share link is untrusted input, so shape and size are checked here and the
+  // result is only ever rendered through escapeHtml().
+  function decodeSharedTask(encoded) {
+    var data = JSON.parse(fromBase64Url(encoded));
+    if (!data || typeof data.n !== 'string' || !data.n.trim()) throw new Error('Not a task');
+    var subs = Array.isArray(data.s) ? data.s.slice(0, 200).map(function (x) {
+      var isArr = Array.isArray(x);
+      return { title: String(isArr ? x[0] : x).slice(0, 300), done: isArr ? !!x[1] : false };
+    }) : [];
+    return {
+      title: data.n.slice(0, 300),
+      notes: typeof data.o === 'string' ? data.o.slice(0, 2000) : '',
+      category: typeof data.c === 'string' ? data.c.slice(0, 60) : '',
+      priority: ['low', 'medium', 'high'].indexOf(data.p) !== -1 ? data.p : 'medium',
+      date: typeof data.d === 'string' ? data.d.slice(0, 10) : '',
+      done: !!data.x,
+      subtasks: subs,
+      sharedAt: typeof data.t === 'string' ? data.t : ''
+    };
+  }
+
+  // --- share dialog (creating a link) ---
+  var shareModal = document.getElementById('shareModal');
+  var shareLinkInput = document.getElementById('shareLinkInput');
+  var shareCopyBtn = document.getElementById('shareCopyBtn');
+  var shareNativeBtn = document.getElementById('shareNativeBtn');
+  var currentShare = null; // { title, text, url }
+
+  function openShareModal(taskId) {
+    var task = tasks.filter(function (t) { return t.id === taskId; })[0];
+    if (!task) return;
+    var url = buildShareLink(task);
+    var doneCount = task.subtasks.filter(function (s) { return s.done; }).length;
+    var percent = progressOf(doneCount, task.subtasks.length, task.done);
+
+    document.getElementById('shareTaskTitle').textContent = task.title;
+    document.getElementById('shareProgressFill').style.width = percent + '%';
+    document.getElementById('shareProgressText').textContent = task.subtasks.length
+      ? doneCount + ' of ' + task.subtasks.length + ' subtasks done \u00b7 ' + percent + '%'
+      : (task.done ? 'Completed' : 'Not started yet');
+    shareLinkInput.value = url;
+    document.getElementById('shareLongNote').hidden = url.length < 4000;
+    shareCopyBtn.textContent = 'Copy link';
+
+    currentShare = {
+      title: task.title + ' \u2014 ' + APP_NAME,
+      text: 'Task: ' + task.title + ' (' + percent + '% done)',
+      url: url
+    };
+    shareNativeBtn.hidden = !navigator.share;
+    openOverlay(shareModal);
+  }
+
+  shareModal.addEventListener('click', function (e) {
+    if (e.target.closest('[data-close-modal]')) closeOverlayEl(shareModal);
+  });
+  shareLinkInput.addEventListener('focus', function () { shareLinkInput.select(); });
+
+  shareCopyBtn.addEventListener('click', function () {
+    var url = shareLinkInput.value;
+    function done() {
+      shareCopyBtn.textContent = 'Copied \u2713';
+      setTimeout(function () { shareCopyBtn.textContent = 'Copy link'; }, 2000);
+    }
+    function fallback() {
+      // Older/insecure contexts have no async clipboard API — fall back to selecting the text.
+      shareLinkInput.focus();
+      shareLinkInput.select();
+      shareLinkInput.setSelectionRange(0, url.length);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+      if (ok) done();
+      else showToast('Couldn\u2019t copy automatically \u2014 the link is selected, so press Ctrl/Cmd+C.');
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(done).catch(fallback);
+    } else {
+      fallback();
+    }
+  });
+
+  shareNativeBtn.addEventListener('click', function () {
+    if (!currentShare || !navigator.share) return;
+    navigator.share(currentShare).catch(function () { /* person dismissed the share sheet */ });
+  });
+
+  // --- shared-task viewer (opening a link someone sent) ---
+  var sharedViewModal = document.getElementById('sharedViewModal');
+  var currentSharedTask = null;
+
+  function clearShareHash() {
+    if (window.history && history.replaceState) history.replaceState(null, '', location.href.split('#')[0]);
+    else location.hash = '';
+  }
+
+  function renderSharedView(shared) {
+    currentSharedTask = shared;
+    var doneCount = shared.subtasks.filter(function (s) { return s.done; }).length;
+    var percent = progressOf(doneCount, shared.subtasks.length, shared.done);
+
+    var meta = '<span class="badge priority-' + shared.priority + '">' + shared.priority + '</span>';
+    if (shared.category) meta += '<span class="badge category">' + escapeHtml(shared.category) + '</span>';
+    if (shared.date) meta += '<span class="badge category">' + escapeHtml(shared.date) + '</span>';
+
+    var subs = shared.subtasks.map(function (s) {
+      return '<li class="shared-sub' + (s.done ? ' is-done' : '') + '">'
+        + '<span class="shared-check">' + (s.done ? '\u2713' : '') + '</span>'
+        + '<span>' + escapeHtml(s.title) + '</span></li>';
+    }).join('');
+
+    var when = '';
+    if (shared.sharedAt) {
+      var d = new Date(shared.sharedAt);
+      if (!isNaN(d.getTime())) when = 'Snapshot taken ' + d.toLocaleString() + '. ';
+    }
+
+    document.getElementById('sharedViewBody').innerHTML =
+      '<h3 class="shared-title' + (shared.done ? ' done' : '') + '">' + escapeHtml(shared.title) + '</h3>'
+      + '<div class="badge-row" style="margin:8px 0 12px;">' + meta + '</div>'
+      + (shared.notes ? '<p class="task-notes" style="margin:0 0 12px;">' + escapeHtml(shared.notes) + '</p>' : '')
+      + '<div class="progress-track"><div class="progress-fill" style="width:' + percent + '%"></div></div>'
+      + '<p class="progress-text">'
+      + (shared.subtasks.length ? doneCount + ' of ' + shared.subtasks.length + ' subtasks done \u00b7 ' + percent + '%' : (shared.done ? 'Completed' : 'Not started yet'))
+      + '</p>'
+      + (subs ? '<ul class="shared-subs">' + subs + '</ul>' : '')
+      + '<p class="menu-note" style="padding:10px 0 0;">' + when + 'This is a snapshot \u2014 it won\u2019t update if the owner keeps working on it.</p>';
+  }
+
+  function closeSharedView() {
+    closeOverlayEl(sharedViewModal);
+    clearShareHash();
+  }
+  sharedViewModal.addEventListener('click', function (e) {
+    if (e.target.closest('[data-close-modal]')) closeSharedView();
+  });
+  document.getElementById('sharedCopyBtn').addEventListener('click', function () {
+    if (!currentSharedTask) return;
+    var s = currentSharedTask;
+    closeSharedView();
+    setTimeout(function () {
+      openModal({
+        title: s.title,
+        notes: s.notes,
+        priority: s.priority,
+        category: s.category,
+        subtasks: s.subtasks.map(function (x) { return x.title; })
+      });
+    }, 340);
+  });
+
+  function handleShareHash() {
+    var m = /^#share=([A-Za-z0-9_-]+)/.exec(location.hash);
+    if (!m) return false;
+    try {
+      renderSharedView(decodeSharedTask(m[1]));
+      openOverlay(sharedViewModal);
+    } catch (err) {
+      showToast('That share link looks broken or incomplete.');
+      clearShareHash();
+    }
+    return true;
+  }
+  window.addEventListener('hashchange', handleShareHash);
+
   // ---------- init ----------
   document.getElementById('versionLabel').textContent = APP_VERSION;
   document.getElementById('yearLabel').textContent = new Date().getFullYear();
@@ -1432,11 +1810,14 @@
     startNotificationTimer();
   }
 
-  // Auto-open "What's new" once per version, on the first load after an update.
+  var openedShare = handleShareHash();
+
+  // Auto-open "What's new" once per version, on the first load after an update
+  // (skipped when someone just arrived via a shared-task link, so the two don't stack).
   var lastSeen = loadJSON(LAST_SEEN_VERSION_KEY, null);
   if (lastSeen !== APP_VERSION) {
     saveJSON(LAST_SEEN_VERSION_KEY, APP_VERSION);
-    if (lastSeen !== null) {
+    if (lastSeen !== null && !openedShare) {
       setTimeout(openWhatsNew, 500);
     }
   }

@@ -64,7 +64,7 @@
           <p class="menu-label">Create from a document</p>
           <button class="menu-item" data-action="import-doc">📄 Import PDF, Word, Excel, or JSON…</button>
           <input type="file" id="importDocInput" accept=".pdf,.doc,.docx,.xlsx,.xls,.json" hidden />
-          <p class="menu-note">Turns one document into one task, with its bullet points (or rows/lines) added as subtasks — you\u2019ll get a chance to review and edit before it\u2019s saved.</p>
+          <p class="menu-note">Turns one document into one task, with its bullet points (or rows/lines) added as subtasks — you’ll get a chance to review and edit before it’s saved.</p>
           <p class="menu-label">App</p>
           <button id="notifyMenuItem" class="menu-item" data-action="notify">🔔 Enable priority task reminders</button>
         </div>
@@ -162,6 +162,45 @@
 </button>
 
 <!-- Coach panel -->
+<!-- Share a task (create a link) -->
+<div id="shareModal" class="modal-overlay" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="glass-strong modal">
+    <div class="modal-head">
+      <h2>Share task</h2>
+      <button type="button" class="glass-btn round small" data-close-modal aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p id="shareTaskTitle" class="share-task-title"></p>
+    <div class="progress-track"><div id="shareProgressFill" class="progress-fill"></div></div>
+    <p id="shareProgressText" class="progress-text"></p>
+    <label class="field-label" for="shareLinkInput" style="margin-top:14px;">Link anyone can open</label>
+    <input id="shareLinkInput" class="share-link-input" type="text" readonly />
+    <div class="share-actions">
+      <button type="button" id="shareCopyBtn" class="primary-btn">Copy link</button>
+      <button type="button" id="shareNativeBtn" class="glass-btn pill" hidden>Share…</button>
+    </div>
+    <p id="shareLongNote" class="menu-note" hidden style="padding-left:0;">This link is quite long (lots of subtasks), so some chat apps may cut it off — if that happens, share it by email or a note instead.</p>
+    <p class="menu-note" style="padding-left:0;">The link holds a <strong>snapshot</strong> of this task and its progress right now. It doesn’t update live — share a fresh link after you make more progress.</p>
+  </div>
+</div>
+
+<!-- Viewing a task someone shared with you -->
+<div id="sharedViewModal" class="modal-overlay" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <div class="glass-strong modal">
+    <div class="modal-head">
+      <h2>Shared task</h2>
+      <button type="button" class="glass-btn round small" data-close-modal aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="sharedViewBody"></div>
+    <button type="button" id="sharedCopyBtn" class="primary-btn">Save a copy to my tasks</button>
+  </div>
+</div>
+
 <div id="coachModal" class="modal-overlay" hidden>
   <div class="modal-backdrop" data-close-modal></div>
   <div class="glass-strong modal">
@@ -195,7 +234,7 @@
   <div class="modal-backdrop" data-close-modal></div>
   <form id="addTaskForm" class="glass-strong modal">
     <div class="modal-head">
-      <h2>New task</h2>
+      <h2 id="modalHeading">New task</h2>
       <button type="button" class="glass-btn round small" data-close-modal aria-label="Close">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
@@ -249,13 +288,18 @@
       <span>Repeat every day until done</span>
     </label>
 
+    <label class="checkbox-row">
+      <input id="taskPinned" type="checkbox" class="momentum-check" />
+      <span>Pin to the top, every day</span>
+    </label>
+
     <div class="field">
       <span class="field-label">Subtasks</span>
       <div id="subtaskFields" class="subtask-fields"></div>
       <button type="button" id="addSubtaskField" class="link-btn">+ Add subtask</button>
     </div>
 
-    <button type="submit" class="primary-btn">Add task</button>
+    <button type="submit" id="taskSubmitBtn" class="primary-btn">Add task</button>
   </form>
 </div>
 
