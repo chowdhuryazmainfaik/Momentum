@@ -2,6 +2,14 @@
 
 All notable changes to Momentum are documented here.
 
+## v3.8.0
+
+- Export a single task as PDF, Excel, Word or JSON (share icon on a task -> "Export this task as a file"). Includes title, notes, status, progress, priority, category, date and every subtask with its state; PDF and Word include the logo.
+- A task exported as JSON can be re-imported via "Import PDF, Word, Excel, or JSON" (as an editable draft). "Restore backup" refuses it, so it can't overwrite your other tasks.
+- Fixed: Word and PDF reports of all tasks never printed the title of any task that had subtasks (only the subtask bullets).
+- Fixed: restoring from an Excel file you exported yourself always failed with "No tasks found" (broke in v3.4.0 when the brand header row was added).
+- Fixed: PDFs with Bangla/emoji/other non-Latin text were garbled. Those characters now show as "?" with a notice; Word, Excel and JSON keep them. The PDF "Generated" date is now plain ASCII.
+
 ## v3.7.0
 
 - Pin a task: tap the pin icon (or tick "Pin to the top, every day" in the form). A pinned task comes back fresh at the top of your list every day until you unpin or delete it.

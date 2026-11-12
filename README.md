@@ -1,6 +1,6 @@
 # Momentum — Focus. Plan. Achieve.
 
-**Version 3.7.0** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
+**Version 3.8.0** — plain HTML/CSS/JS, no build step (same setup as a typical portfolio site).
 
 ## Run it
 
@@ -37,6 +37,7 @@ CHANGELOG.md       Version history
 - **Pin a task** — pinned tasks reappear fresh at the top of your list every day (each day gets its own copy, so streaks and history still work). Unpin or delete to stop; deleting a pinned task removes the whole series.
 - **Edit a task** — the pencil icon opens the same form used to add tasks, pre-filled. Subtask ids and checked states are preserved, so editing never loses progress.
 - **Share a task** — creates a link with the task and its progress stored in the URL's `#` part (never sent to any server). Whoever opens it sees a read-only view and can save a copy. It is a *snapshot*: this app has no backend, so a link can't update live — share a fresh one after making progress. Tasks with very many subtasks make long links that some chat apps may truncate.
+- **Export one task** — the share icon on a task opens "Share & export", where you can download just that task as **PDF, Excel, Word or JSON**. Single-task JSON can be re-imported through "Import PDF, Word, Excel, or JSON"; it is not accepted by "Restore backup" (that action replaces *all* tasks).
 - **Import a document as a task** — upload a PDF, Word (.docx), Excel, or JSON file and it becomes a draft task with the document's bullet points, list items, spreadsheet cells, or JSON array entries turned into subtasks. Opens in the New Task form for you to review/edit before saving.
 - **Momentum Coach** — a panel with a few observations about your current tasks (overdue items, streaks, stale high-priority tasks, etc.), computed entirely from your local data. No account, no external API calls.
 - **What's New** — see what changed in the current version any time; it also opens automatically once after an update.
@@ -59,6 +60,8 @@ This means the icon was installed **before** the v3.4.1 fix, back when the manif
 4. Click **Install App** again to create a new shortcut.
 
 ## Notes
+
+- **PDF and non-Latin text:** the PDF library (jsPDF) only has Latin fonts and no text shaping, so Bangla, emoji and other scripts can't be drawn. Those characters become `?` and the app shows a notice. Word, Excel and JSON keep them exactly. Properly supporting such text in PDF would mean generating PDFs through the browser's own print-to-PDF instead.
 
 - Export relies on three small libraries loaded from a CDN (`cdnjs.cloudflare.com`) — that's the only time the app needs internet access; everything else works fully offline once loaded.
 - Document import relies on two more CDN libraries (`mammoth` for Word, `pdf.js` for PDF) — same CDN, same one-time-per-load cost. Only the newer `.docx` format is supported for Word, not the older binary `.doc` format. Bullet detection is heuristic: real bulleted/numbered lists in a Word doc or PDF are detected reliably; plain paragraphs fall back to "one subtask per paragraph/line," which can be noisy for prose-heavy documents — that's exactly why the import opens as an editable draft instead of saving immediately.

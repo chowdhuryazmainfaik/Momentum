@@ -167,7 +167,7 @@
   <div class="modal-backdrop" data-close-modal></div>
   <div class="glass-strong modal">
     <div class="modal-head">
-      <h2>Share task</h2>
+      <h2>Share &amp; export</h2>
       <button type="button" class="glass-btn round small" data-close-modal aria-label="Close">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
@@ -182,6 +182,15 @@
       <button type="button" id="shareNativeBtn" class="glass-btn pill" hidden>Share…</button>
     </div>
     <p id="shareLongNote" class="menu-note" hidden style="padding-left:0;">This link is quite long (lots of subtasks), so some chat apps may cut it off — if that happens, share it by email or a note instead.</p>
+    <div class="export-task-section">
+      <p class="field-label">Export this task as a file</p>
+      <div class="export-task-grid">
+        <button type="button" class="glass-btn pill export-chip" data-task-export="pdf">PDF</button>
+        <button type="button" class="glass-btn pill export-chip" data-task-export="xlsx">Excel</button>
+        <button type="button" class="glass-btn pill export-chip" data-task-export="docx">Word</button>
+        <button type="button" class="glass-btn pill export-chip" data-task-export="json">JSON</button>
+      </div>
+    </div>
     <p class="menu-note" style="padding-left:0;">The link holds a <strong>snapshot</strong> of this task and its progress right now. It doesn’t update live — share a fresh link after you make more progress.</p>
   </div>
 </div>

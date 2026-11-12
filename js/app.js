@@ -3,7 +3,7 @@
 
   var APP_NAME = 'Momentum';
   var APP_TAGLINE = 'Focus. Plan. Achieve.';
-  var APP_VERSION = '3.7.0';
+  var APP_VERSION = '3.8.0';
 
   var TASKS_KEY = 'momentum.tasks.v1';
   var CATEGORIES_KEY = 'momentum.categories.v1';
@@ -12,6 +12,17 @@
   var DEFAULT_CATEGORIES = ['Personal', 'Work', 'Health', 'Learning'];
 
   var CHANGELOG = [
+    {
+      version: '3.8.0',
+      date: 'August 2026',
+      items: [
+        { type: 'feat', text: 'Export a single task as PDF, Excel, Word or JSON: tap the share icon on a task, then pick a format under "Export this task as a file". Each file has the title, notes, status, progress, priority, category, date and every subtask with its done/pending state, plus the logo in PDF and Word.' },
+        { type: 'feat', text: 'A task exported as JSON can be brought back with "Import PDF, Word, Excel, or JSON" (it opens as an editable draft). It is deliberately refused by "Restore backup", so it can never overwrite your other tasks.' },
+        { type: 'fix', text: 'Word and PDF reports of all your tasks never printed the task title for any task that had subtasks \u2014 only the subtask bullets. Each task now appears on its own line with its subtasks indented below it.' },
+        { type: 'fix', text: 'Restoring from an Excel file you exported yourself always failed with "No tasks found" (it broke when the brand header row was added in v3.4.0). Fixed, and checked with a real export-then-restore round trip.' },
+        { type: 'fix', text: 'PDFs containing Bangla, emoji or other non-Latin text came out as garbled lines. Those characters now show as "?" and the app tells you; Word, Excel and JSON keep them exactly. The "Generated" date in PDFs is now plain ASCII too, since some locales\u2019 date formats corrupted that line.' }
+      ]
+    },
     {
       version: '3.7.0',
       date: 'August 2026',
@@ -586,7 +597,7 @@
       + '<p class="task-title' + (task.done ? ' done' : '') + '">' + escapeHtml(task.title) + '</p>'
       + '<div class="task-actions">'
       + '<button type="button" class="icon-btn pin-btn' + (task.pinned ? ' active' : '') + '" data-pin-task="' + tid + '" aria-label="' + pinLabel + '" title="' + pinLabel + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="' + (task.pinned ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z"/><path d="M12 14v7"/></svg></button>'
-      + '<button type="button" class="icon-btn" data-share-task="' + tid + '" aria-label="Share task" title="Share task"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="m16 6-4-4-4 4M12 2v14"/></svg></button>'
+      + '<button type="button" class="icon-btn" data-share-task="' + tid + '" aria-label="Share or export task" title="Share or export task"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="m16 6-4-4-4 4M12 2v14"/></svg></button>'
       + '<button type="button" class="icon-btn" data-edit-task="' + tid + '" aria-label="Edit task" title="Edit task"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>'
       + '<button type="button" class="icon-btn" data-delete-task="' + tid + '" aria-label="Delete task" title="Delete task"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/></svg></button>'
       + '</div>'
@@ -929,8 +940,13 @@
     showToast._t = setTimeout(function () { toast.hidden = true; }, 4000);
   }
 
-  function filenameBase() {
-    return 'momentum-tasks-' + todayStr() + '-v' + APP_VERSION;
+  function filenameBase(suffix) {
+    return 'momentum-' + (suffix || 'tasks') + '-' + todayStr() + '-v' + APP_VERSION;
+  }
+
+  function slugify(text) {
+    var s = String(text || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+    return s || 'task';
   }
 
   // Fetches the logo once and caches it as a data URL, for embedding into exported files.
@@ -951,9 +967,10 @@
     return _logoDataUrlPromise;
   }
 
-  function flattenRows() {
+  // One row per subtask (task fields repeated) — the shape Excel export uses and Excel restore reads.
+  function flattenRows(list) {
     var rows = [];
-    tasks.forEach(function (t) {
+    (list || tasks).forEach(function (t) {
       if (t.subtasks.length === 0) {
         rows.push({ Date: t.date, Task: t.title, Category: t.category, Priority: t.priority, Status: t.done ? 'Done' : 'Pending', Repeats: t.repeatDaily ? 'Daily' : 'One-time', Subtask: '', SubStatus: '' });
       } else {
@@ -965,9 +982,50 @@
     return rows;
   }
 
-  function exportExcel() {
+  // Reading-friendly rows for Word/PDF: each task on its own line, its subtasks indented beneath.
+  function reportRows(list) {
+    var out = [];
+    (list || tasks).forEach(function (t) {
+      out.push({ kind: 'task', date: t.date, label: t.title, category: t.category, priority: t.priority, status: t.done ? 'Done' : 'Pending', repeats: t.repeatDaily ? 'Daily' : 'One-time' });
+      t.subtasks.forEach(function (s) {
+        out.push({ kind: 'sub', date: '', label: '\u2022 ' + s.title, category: '', priority: '', status: s.done ? 'Done' : 'Pending', repeats: '' });
+      });
+    });
+    return out;
+  }
+
+  // jsPDF's built-in fonts only cover Latin text. Anything else (Bangla, emoji, CJK...) is written
+  // into the file as bytes the font can't interpret, which shows up as garbled text for the WHOLE
+  // line. So typographic punctuation is mapped to plain equivalents, other unsupported characters
+  // become a single "?", and the person is told (Word/Excel/JSON keep the original text exactly).
+  var pdfLostChars = false;
+  var PDF_PUNCT = { '\u2018': "'", '\u2019': "'", '\u201B': "'", '\u201C': '"', '\u201D': '"', '\u201F': '"', '\u2013': '-', '\u2014': '-', '\u2022': '-', '\u2026': '...', '\u00A0': ' ' };
+  function pdfSafe(text) {
+    var out = '';
+    var lastLost = false;
+    Array.from(String(text == null ? '' : text)).forEach(function (ch) {
+      if (PDF_PUNCT[ch] !== undefined) { out += PDF_PUNCT[ch]; lastLost = false; }
+      else if (ch.codePointAt(0) <= 255) { out += ch; lastLost = false; }
+      else {
+        if (!lastLost) out += '?';
+        lastLost = true;
+        pdfLostChars = true;
+      }
+    });
+    return out;
+  }
+  // Locale-independent on purpose: toLocaleString() can contain non-Latin digits or a narrow
+  // no-break space, either of which would corrupt the whole header line in a PDF.
+  function pdfStamp() {
+    var d = new Date();
+    function p(n) { return n < 10 ? '0' + n : String(n); }
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  var PDF_LOSSY_NOTE = 'Some characters (like Bangla or emoji) can\u2019t be drawn in PDF files and appear as "?". Word, Excel and JSON keep them exactly.';
+
+  function exportExcel(list) {
     if (typeof XLSX === 'undefined') { showToast('Excel export library failed to load. Check your connection.'); return; }
-    var rows = flattenRows().map(function (r) {
+    var rows = flattenRows(list).map(function (r) {
       return { Date: r.Date, Task: r.Task, Category: r.Category, Priority: r.Priority, Status: r.Status, Repeats: r.Repeats, Subtask: r.Subtask, 'Subtask Status': r.SubStatus };
     });
     // The free/CDN build of SheetJS can't embed an actual logo image into a sheet, so a bold
@@ -978,19 +1036,18 @@
     XLSX.utils.sheet_add_json(ws, rows, { origin: 'A3' });
     ws['!cols'] = [{ wch: 12 }, { wch: 30 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 30 }, { wch: 14 }];
     ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }];
-    if (ws['A1']) ws['A1'].s = { font: { bold: true, sz: 14 } };
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Tasks');
     XLSX.writeFile(wb, filenameBase() + '.xlsx');
   }
 
-  function exportWord() {
-    var rows = flattenRows();
-    var body = rows.map(function (r) {
-      var label = r.Subtask ? ('&nbsp;&nbsp;• ' + escapeHtml(r.Subtask)) : escapeHtml(r.Task);
-      var status = r.Subtask ? r.SubStatus : r.Status;
-      return '<tr><td>' + r.Date + '</td><td>' + label + '</td><td>' + escapeHtml(r.Category) + '</td>'
-        + '<td>' + r.Priority + '</td><td>' + status + '</td><td>' + r.Repeats + '</td></tr>';
+  function exportWord(list) {
+    var body = reportRows(list).map(function (r) {
+      var isTask = r.kind === 'task';
+      var style = isTask ? 'font-weight:bold;' : 'color:#555;';
+      var label = (isTask ? '' : '&nbsp;&nbsp;&nbsp;') + escapeHtml(r.label);
+      return '<tr style="' + style + '"><td>' + escapeHtml(r.date) + '</td><td>' + label + '</td><td>' + escapeHtml(r.category) + '</td>'
+        + '<td>' + escapeHtml(r.priority) + '</td><td>' + r.status + '</td><td>' + r.repeats + '</td></tr>';
     }).join('');
 
     getLogoDataUrl().then(function (logoUrl) {
@@ -998,19 +1055,20 @@
       var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
         + '<head><meta charset="utf-8"><title>' + APP_NAME + ' Report</title></head><body>'
         + '<div style="margin-bottom:6px;">' + logoHtml
-        + '<span style="font-family:Calibri,Arial,sans-serif;font-size:22px;font-weight:bold;vertical-align:middle;">' + APP_NAME + ' — Task Report</span></div>'
-        + '<p style="font-family:Calibri,Arial,sans-serif;color:#666;font-size:11px;">Generated ' + new Date().toLocaleString() + ' · ' + APP_NAME + ' v' + APP_VERSION + '</p>'
+        + '<span style="font-family:Calibri,Arial,sans-serif;font-size:22px;font-weight:bold;vertical-align:middle;">' + APP_NAME + ' \u2014 Task Report</span></div>'
+        + '<p style="font-family:Calibri,Arial,sans-serif;color:#666;font-size:11px;">Generated ' + new Date().toLocaleString() + ' \u00b7 ' + APP_NAME + ' v' + APP_VERSION + '</p>'
         + '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:12px;width:100%;">'
         + '<tr style="background:#FF3FA8;color:#fff;"><th>Date</th><th>Task / Subtask</th><th>Category</th><th>Priority</th><th>Status</th><th>Repeats</th></tr>'
         + body + '</table></body></html>';
 
-      var blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-      downloadBlob(blob, filenameBase() + '.doc');
+      downloadBlob(new Blob(['\ufeff', html], { type: 'application/msword' }), filenameBase() + '.doc');
     });
   }
 
-  function exportPdf() {
+  function exportPdf(list) {
     if (typeof window.jspdf === 'undefined') { showToast('PDF export library failed to load. Check your connection.'); return; }
+    pdfLostChars = false;
+    var rows = reportRows(list);
 
     getLogoDataUrl().then(function (logoUrl) {
       var doc = new window.jspdf.jsPDF();
@@ -1022,23 +1080,188 @@
         } catch (e) { /* fall back to no logo if the image can't be embedded */ }
       }
       doc.setFontSize(18);
-      doc.text(APP_NAME + ' — Task Report', titleX, 19);
+      doc.text(pdfSafe(APP_NAME + ' \u2014 Task Report'), titleX, 19);
       doc.setFontSize(10);
       doc.setTextColor(120);
-      doc.text('Generated ' + new Date().toLocaleString() + ' · ' + APP_NAME + ' v' + APP_VERSION, 14, 30);
-
-      var rows = flattenRows().map(function (r) {
-        return [r.Date, r.Subtask ? ('  • ' + r.Subtask) : r.Task, r.Category, r.Priority, r.Subtask ? r.SubStatus : r.Status, r.Repeats];
-      });
+      doc.text(pdfSafe('Generated ' + pdfStamp() + ' \u00b7 ' + APP_NAME + ' v' + APP_VERSION), 14, 30);
 
       doc.autoTable({
         startY: 36,
         head: [['Date', 'Task / Subtask', 'Category', 'Priority', 'Status', 'Repeats']],
-        body: rows,
+        body: rows.map(function (r) { return [r.date, pdfSafe(r.kind === 'sub' ? '    ' + r.label : r.label), pdfSafe(r.category), r.priority, r.status, r.repeats]; }),
         styles: { fontSize: 9 },
-        headStyles: { fillColor: [255, 63, 168] }
+        headStyles: { fillColor: [255, 63, 168] },
+        didParseCell: function (data) {
+          if (data.section !== 'body') return;
+          if (rows[data.row.index] && rows[data.row.index].kind === 'task') data.cell.styles.fontStyle = 'bold';
+          else data.cell.styles.textColor = [90, 90, 100];
+        }
       });
       doc.save(filenameBase() + '.pdf');
+      if (pdfLostChars) showToast(PDF_LOSSY_NOTE);
+    });
+  }
+
+  // ---------- export ONE task (PDF / Excel / Word / JSON) ----------
+  function taskSummary(task) {
+    var total = task.subtasks.length;
+    var doneCount = task.subtasks.filter(function (s) { return s.done; }).length;
+    var percent = progressOf(doneCount, total, task.done);
+    var progress = total ? doneCount + ' of ' + total + ' subtasks (' + percent + '%)' : (task.done ? 'Completed' : 'Not started');
+    var pri = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
+    var details = [
+      ['Status', task.done ? 'Done' : 'Pending'],
+      ['Progress', progress],
+      ['Category', task.category],
+      ['Priority', pri],
+      ['Date', task.date],
+      ['Repeats', task.repeatDaily ? 'Every day' : 'One-time'],
+      ['Pinned', task.pinned ? 'Yes' : 'No']
+    ];
+    if (task.notes) details.push(['Notes', task.notes]);
+    return { total: total, doneCount: doneCount, percent: percent, progress: progress, details: details };
+  }
+
+  function exportTaskJson(task) {
+    var s = taskSummary(task);
+    var data = {
+      app: APP_NAME,
+      version: APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      title: task.title,
+      notes: task.notes || '',
+      category: task.category,
+      priority: task.priority,
+      date: task.date,
+      status: task.done ? 'done' : 'pending',
+      progressPercent: s.percent,
+      repeatDaily: !!task.repeatDaily,
+      pinned: !!task.pinned,
+      subtasks: task.subtasks.map(function (st) { return { title: st.title, done: !!st.done }; })
+    };
+    downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), filenameBase('task-' + slugify(task.title)) + '.json');
+  }
+
+  function exportTaskExcel(task) {
+    if (typeof XLSX === 'undefined') { showToast('Excel export library failed to load. Check your connection.'); return false; }
+    var s = taskSummary(task);
+    var aoa = [[APP_NAME + ' \u2014 ' + APP_TAGLINE], [], ['Task', task.title]]
+      .concat(s.details)
+      .concat([[], ['#', 'Subtask', 'Status']])
+      .concat(task.subtasks.length
+        ? task.subtasks.map(function (st, i) { return [i + 1, st.title, st.done ? 'Done' : 'Pending']; })
+        : [['', '(no subtasks)', '']]);
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 14 }, { wch: 56 }, { wch: 12 }];
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Task');
+    XLSX.writeFile(wb, filenameBase('task-' + slugify(task.title)) + '.xlsx');
+    return true;
+  }
+
+  function exportTaskWord(task) {
+    var s = taskSummary(task);
+    var detailRows = [['Task', task.title]].concat(s.details).map(function (r) {
+      return '<tr><td style="font-weight:bold;width:130px;background:#f4f4f7;">' + escapeHtml(r[0]) + '</td><td>' + escapeHtml(r[1]) + '</td></tr>';
+    }).join('');
+    var subRows = task.subtasks.length
+      ? task.subtasks.map(function (st, i) {
+          return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(st.title) + '</td><td>' + (st.done ? '\u2611 Done' : '\u2610 Pending') + '</td></tr>';
+        }).join('')
+      : '<tr><td colspan="3" style="color:#777;">No subtasks</td></tr>';
+
+    return getLogoDataUrl().then(function (logoUrl) {
+      var logoHtml = logoUrl ? '<img src="' + logoUrl + '" style="height:36px;vertical-align:middle;margin-right:10px;" />' : '';
+      var font = 'font-family:Calibri,Arial,sans-serif;';
+      var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
+        + '<head><meta charset="utf-8"><title>' + escapeHtml(task.title) + '</title></head><body>'
+        + '<div style="margin-bottom:6px;">' + logoHtml + '<span style="' + font + 'font-size:22px;font-weight:bold;vertical-align:middle;">' + escapeHtml(task.title) + '</span></div>'
+        + '<p style="' + font + 'color:#666;font-size:11px;">' + APP_NAME + ' task export \u00b7 Generated ' + new Date().toLocaleString() + ' \u00b7 v' + APP_VERSION + '</p>'
+        + '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;' + font + 'font-size:12px;width:100%;">' + detailRows + '</table>'
+        + '<h3 style="' + font + 'margin:18px 0 6px;">Subtasks</h3>'
+        + '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;' + font + 'font-size:12px;width:100%;">'
+        + '<tr style="background:#FF3FA8;color:#fff;"><th style="width:36px;">#</th><th>Subtask</th><th style="width:110px;">Status</th></tr>'
+        + subRows + '</table></body></html>';
+      downloadBlob(new Blob(['\ufeff', html], { type: 'application/msword' }), filenameBase('task-' + slugify(task.title)) + '.doc');
+      return true;
+    });
+  }
+
+  function exportTaskPdf(task) {
+    if (typeof window.jspdf === 'undefined') { showToast('PDF export library failed to load. Check your connection.'); return Promise.resolve(false); }
+    var s = taskSummary(task);
+    pdfLostChars = false;
+
+    return getLogoDataUrl().then(function (logoUrl) {
+      var doc = new window.jspdf.jsPDF();
+      var titleX = 14;
+      if (logoUrl) {
+        try { doc.addImage(logoUrl, 'PNG', 14, 10, 14, 14); titleX = 32; } catch (e) { /* no logo */ }
+      }
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text(pdfSafe(APP_NAME + ' task export \u00b7 Generated ' + pdfStamp() + ' \u00b7 v' + APP_VERSION), titleX, 15);
+
+      doc.setFontSize(18);
+      doc.setTextColor(20);
+      var titleLines = doc.splitTextToSize(pdfSafe(task.title), 196 - titleX);
+      doc.text(titleLines, titleX, 24);
+      var y = Math.max(34, 24 + (titleLines.length - 1) * 7.5 + 10);
+
+      // progress bar
+      doc.setFontSize(10);
+      doc.setTextColor(90);
+      doc.text(pdfSafe('Progress: ' + s.progress), 14, y);
+      doc.setFillColor(232, 232, 238);
+      doc.roundedRect(14, y + 3, 182, 4, 2, 2, 'F');
+      if (s.percent > 0) {
+        doc.setFillColor(255, 63, 168);
+        doc.roundedRect(14, y + 3, Math.max(4, 182 * s.percent / 100), 4, 2, 2, 'F');
+      }
+
+      doc.autoTable({
+        startY: y + 14,
+        body: s.details.map(function (r) { return [pdfSafe(r[0]), pdfSafe(r[1])]; }),
+        theme: 'grid',
+        styles: { fontSize: 10 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 34, fillColor: [244, 244, 247] } }
+      });
+
+      var after = doc.lastAutoTable.finalY + 8;
+      if (task.subtasks.length) {
+        doc.autoTable({
+          startY: after,
+          head: [['#', 'Subtask', 'Status']],
+          body: task.subtasks.map(function (st, i) { return [i + 1, pdfSafe(st.title), st.done ? 'Done' : 'Pending']; }),
+          styles: { fontSize: 10 },
+          headStyles: { fillColor: [255, 63, 168] },
+          columnStyles: { 0: { cellWidth: 12 }, 2: { cellWidth: 28 } }
+        });
+      } else {
+        doc.setFontSize(10);
+        doc.setTextColor(120);
+        doc.text('No subtasks.', 14, after + 4);
+      }
+      doc.save(filenameBase('task-' + slugify(task.title)) + '.pdf');
+      return true;
+    });
+  }
+
+  var FORMAT_NAMES = { pdf: 'PDF', xlsx: 'Excel', docx: 'Word', json: 'JSON' };
+  function exportSingleTask(taskId, format) {
+    var task = tasks.filter(function (t) { return t.id === taskId; })[0];
+    if (!task) return;
+    var p;
+    if (format === 'pdf') p = exportTaskPdf(task);
+    else if (format === 'xlsx') p = Promise.resolve(exportTaskExcel(task));
+    else if (format === 'docx') p = exportTaskWord(task);
+    else if (format === 'json') { exportTaskJson(task); p = Promise.resolve(true); }
+    else return;
+    p.then(function (done) {
+      if (done === false) return;
+      if (format === 'pdf' && pdfLostChars) showToast(PDF_LOSSY_NOTE);
+      else showToast('Exported \u201c' + task.title + '\u201d as ' + FORMAT_NAMES[format] + '.');
     });
   }
 
@@ -1142,7 +1365,13 @@
         var data = new Uint8Array(reader.result);
         var wb = XLSX.read(data, { type: 'array' });
         var sheet = wb.Sheets[wb.SheetNames[0]];
-        var rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        // Our own exports put a brand line above the table, so the header isn't necessarily row 1.
+        var grid = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        var headerAt = 0;
+        for (var gi = 0; gi < grid.length; gi++) {
+          if (grid[gi].indexOf('Date') !== -1 && grid[gi].indexOf('Task') !== -1) { headerAt = gi; break; }
+        }
+        var rows = XLSX.utils.sheet_to_json(sheet, { defval: '', range: headerAt });
         var imported = reconstructTasksFromRows(rows);
         if (!imported.tasks.length) throw new Error('No tasks found in that spreadsheet.');
         tasks = imported.tasks;
@@ -1660,10 +1889,12 @@
   var shareCopyBtn = document.getElementById('shareCopyBtn');
   var shareNativeBtn = document.getElementById('shareNativeBtn');
   var currentShare = null; // { title, text, url }
+  var currentShareTaskId = null;
 
   function openShareModal(taskId) {
     var task = tasks.filter(function (t) { return t.id === taskId; })[0];
     if (!task) return;
+    currentShareTaskId = task.id;
     var url = buildShareLink(task);
     var doneCount = task.subtasks.filter(function (s) { return s.done; }).length;
     var percent = progressOf(doneCount, task.subtasks.length, task.done);
@@ -1687,7 +1918,9 @@
   }
 
   shareModal.addEventListener('click', function (e) {
-    if (e.target.closest('[data-close-modal]')) closeOverlayEl(shareModal);
+    if (e.target.closest('[data-close-modal]')) { closeOverlayEl(shareModal); return; }
+    var fmt = e.target.closest('[data-task-export]');
+    if (fmt && currentShareTaskId) exportSingleTask(currentShareTaskId, fmt.getAttribute('data-task-export'));
   });
   shareLinkInput.addEventListener('focus', function () { shareLinkInput.select(); });
 
